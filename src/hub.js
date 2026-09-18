@@ -137,6 +137,70 @@ class Hub {
     return [...new Set([...set].map((c) => c.userId))];
   }
 
+  /** 房间当前在线连接数 */
+  roomConnectionCount(roomId) {
+    const set = this.byRoom.get(roomId);
+    return set ? set.size : 0;
+  }
+
+  /**
+   * 向某用户的所有在线连接投递一帧（邀请通知、申请审批结果、被踢/角色变更等
+   * 不依赖房间订阅的事件）。frame 只序列化一次。返回投递连接数。
+   */
+  sendToUser(userId, frame) {
+    const set = this.byUser.get(userId);
+    if (!set || set.size === 0) return 0;
+    const str = JSON.stringify(frame);
+    let delivered = 0;
+    for (const conn of set) {
+      if (this.send(conn, str)) delivered++;
+    }
+    return delivered;
+  }
+
+  /**
+   * 让某用户的所有连接退出房间订阅（退群/被踢/群组解散时调用）：
+   * 清理房间索引与各连接的未 ACK 队列。返回受影响的连接（调用方可再做关闭后通知）。
+   */
+  leaveRoomForUser(userId, roomId) {
+    const set = this.byUser.get(userId);
+    if (!set) return [];
+    const affected = [];
+    for (const conn of set) {
+      if (conn.rooms.has(roomId)) {
+        this._leaveRoomSet(roomId, conn);
+        conn.rooms.delete(roomId);
+        const room = conn.unacked.get(roomId);
+        if (room) {
+          conn.unackedCount -= room.size;
+          conn.unacked.delete(roomId);
+        }
+        affected.push(conn);
+      }
+    }
+    return affected;
+  }
+
+  /** 群组解散：向房间内所有连接广播一帧，随后清空该房间的全部订阅索引 */
+  broadcastAndCloseRoom(roomId, frame) {
+    const set = this.byRoom.get(roomId);
+    if (!set) return 0;
+    const str = JSON.stringify(frame);
+    let delivered = 0;
+    for (const conn of set) {
+      if (this.send(conn, str)) delivered++;
+      conn.rooms.delete(roomId);
+      const room = conn.unacked.get(roomId);
+      if (room) {
+        conn.unackedCount -= room.size;
+        conn.unacked.delete(roomId);
+      }
+    }
+    set.clear();
+    this.byRoom.delete(roomId);
+    return delivered;
+  }
+
   /**
    * 发送单帧到指定连接。track=true 时登记未 ACK 追踪（用于 msg 类帧）。
    * 背压：未确认积压超过上限时断开连接（客户端重连后走 sync 补发）。

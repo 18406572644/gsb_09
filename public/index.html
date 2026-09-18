@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>可靠聊天室</title>
+<title>群组聊天平台</title>
 <style>
   * { box-sizing: border-box; margin: 0; }
   body { font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -12,37 +12,76 @@
   header h1 { font-size: 16px; margin-right: auto; }
   #status { width: 10px; height: 10px; border-radius: 50%; background: #666; }
   #status.on { background: #3ecf6e; } #status.off { background: #e05252; }
-  input, button { font: inherit; padding: 7px 10px; border-radius: 6px; border: 1px solid #2a3550;
-                  background: #1c2539; color: inherit; }
+  input, select, textarea, button { font: inherit; padding: 7px 10px; border-radius: 6px;
+                  border: 1px solid #2a3550; background: #1c2539; color: inherit; }
+  textarea { resize: vertical; }
   button { cursor: pointer; background: #2f6fed; border-color: #2f6fed; color: #fff; }
+  button.ghost { background: #24304d; border-color: #2a3550; color: #dde3f0; }
+  button.danger { background: #c0392b; border-color: #c0392b; }
   button:disabled { opacity: .5; cursor: default; }
   main { flex: 1; display: flex; min-height: 0; }
-  #sidebar { width: 220px; background: #161d2e; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  #sidebar .room { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; }
-  #sidebar .room.active, #sidebar .room:hover { background: #24304d; }
-  #sidebar .badge { color: #7f8db3; font-size: 12px; }
+  #sidebar { width: 240px; background: #161d2e; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height:0; }
+  .tabs { display: flex; gap: 4px; }
+  .tabs button { flex: 1; padding: 6px; font-size: 12px; }
+  .tabs button.active { background: #2f6fed; }
+  #sideList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; min-height:0; }
+  #sideList .item { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items:center; gap:6px; }
+  #sideList .item.active, #sideList .item:hover { background: #24304d; }
+  #sideList .badge { color: #7f8db3; font-size: 11px; }
+  .mode-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #2a3550; color: #9fb0d8; white-space: nowrap;}
   #chat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #roomHeader { padding: 8px 16px; background: #161d2e; display:flex; align-items:center; gap:10px; border-bottom:1px solid #1c2539;}
+  #roomHeader .title { font-weight:600; }
+  #roomHeader .sub { font-size: 11px; color: #7f8db3; }
+  #roomHeader .spacer { margin-left:auto; display:flex; gap:6px; }
+  #roomHeader button { padding: 4px 10px; font-size: 12px; }
+  #announceBar { display:none; padding: 8px 16px; background: #2a2418; border-bottom:1px solid #3a3320; font-size:13px; }
+  #announceBar.show { display:flex; gap:8px; align-items:flex-start; }
+  #announceBar .ico { color:#f0b429; }
   #messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
   .msg { max-width: 70%; padding: 8px 12px; border-radius: 10px; background: #1c2539; align-self: flex-start; }
   .msg.mine { background: #2f6fed; align-self: flex-end; }
   .msg .meta { font-size: 11px; opacity: .65; margin-bottom: 2px; }
   .msg .tick { font-size: 11px; opacity: .7; }
-  .sys { align-self: center; font-size: 12px; color: #7f8db3; }
+  .sys { align-self: center; font-size: 12px; color: #7f8db3; text-align:center;}
   #composer { display: flex; gap: 8px; padding: 12px 16px; background: #161d2e; }
   #composer input { flex: 1; }
-  #members { width: 200px; background: #161d2e; padding: 12px; overflow-y: auto; }
-  #members .m { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 13px; }
+  #members { width: 220px; background: #161d2e; padding: 12px; overflow-y: auto; }
+  #members h3 { font-size: 12px; color:#7f8db3; margin-bottom:8px;}
+  #members .m { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 13px; flex-wrap:wrap;}
   #members .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
   #members .dot.on { background: #3ecf6e; }
-  #members .tag { font-size: 11px; color: #f0b429; }
-  #members .tag.muted { color: #e05252; }
-  #members button { padding: 2px 6px; font-size: 11px; margin-left: auto; }
+  .tag { font-size: 10px; padding: 0 6px; border-radius: 8px; }
+  .tag.owner { background:#6a4caf; color:#fff; }
+  .tag.admin { background:#8a6d1f; color:#ffe9a8; }
+  .tag.muted { background:#7a2a2a; color:#ffb3b3; }
+  #members .acts { margin-left:auto; display:flex; gap:4px;}
+  #members .acts button { padding: 1px 6px; font-size: 10px; }
   .hidden { display: none !important; }
+
+  /* 弹窗与 toast */
+  #modalMask { position: fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:50;}
+  #modalMask.show { display:flex; }
+  .modal { background:#161d2e; border:1px solid #2a3550; border-radius:10px; padding:18px; width: 440px; max-height:86vh; overflow-y:auto;}
+  .modal h2 { font-size:15px; margin-bottom:12px; }
+  .field { margin-bottom:10px; display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:12px; color:#9fb0d8; }
+  .field input, .field select, .field textarea { width:100%; }
+  .perms { display:grid; grid-template-columns: 1fr auto auto auto; gap:4px 8px; align-items:center; font-size:12px;}
+  .perms .pname { color:#9fb0d8; }
+  .perms label { display:flex; gap:3px; align-items:center; font-size:11px;}
+  .modal .row-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px;}
+  .req-item, .inv-item { border:1px solid #24304d; border-radius:8px; padding:8px; margin-bottom:8px; font-size:13px; display:flex; flex-direction:column; gap:6px;}
+  .req-item .line, .inv-item .line { display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .code-box { font-family:monospace; background:#0f1420; padding:6px 8px; border-radius:6px; word-break:break-all; font-size:12px;}
+  #toasts { position: fixed; right: 16px; bottom: 16px; display:flex; flex-direction:column; gap:8px; z-index:60;}
+  .toast { background:#24304d; border:1px solid #3a4a73; border-left:3px solid #2f6fed; padding:10px 14px; border-radius:8px; max-width:320px; font-size:13px;}
+  .toast.ok { border-left-color:#3ecf6e; } .toast.err { border-left-color:#e05252; } .toast.warn { border-left-color:#f0b429;}
 </style>
 </head>
 <body>
 <header>
-  <h1>可靠聊天室</h1>
+  <h1>群组聊天平台</h1>
   <span id="status" class="off"></span><span id="statusText">未连接</span>
   <span id="who"></span>
 </header>
@@ -53,17 +92,33 @@
       <input id="nameInput" placeholder="输入昵称登录" maxlength="32" required style="width:100%">
       <button style="width:100%;margin-top:8px">登录</button>
     </form>
-    <div id="roomPanel" class="hidden" style="display:flex;flex-direction:column;gap:8px">
-      <form id="createForm" style="display:flex;gap:6px">
-        <input id="roomInput" placeholder="房间名" maxlength="64" style="flex:1;min-width:0">
-        <button type="submit">建</button>
-      </form>
-      <button id="joinBtn">加入房间</button>
-      <div id="roomList"></div>
+    <div id="appPanel" class="hidden" style="display:flex;flex-direction:column;gap:8px;flex:1;min-height:0">
+      <div class="tabs">
+        <button id="tabMine" class="active">我的群组</button>
+        <button id="tabDiscover">发现</button>
+        <button id="tabInvites">邀请 <span id="inviteBadge" class="hidden"></span></button>
+      </div>
+      <button id="createBtn">＋ 创建群组</button>
+      <div id="sideList"></div>
     </div>
   </div>
 
   <div id="chat">
+    <div id="roomHeader" class="hidden">
+      <div>
+        <div class="title" id="rhName"></div>
+        <div class="sub" id="rhSub"></div>
+      </div>
+      <div class="spacer">
+        <button id="announceBtn" class="ghost">公告</button>
+        <button id="inviteBtn" class="ghost">邀请</button>
+        <button id="requestsBtn" class="ghost">申请 <span id="reqBadge" class="hidden"></span></button>
+        <button id="settingsBtn" class="ghost">设置</button>
+        <button id="leaveBtn" class="ghost">退群</button>
+        <button id="dissolveBtn" class="danger">解散</button>
+      </div>
+    </div>
+    <div id="announceBar"><span class="ico">📢</span><span id="announceText"></span></div>
     <div id="messages"></div>
     <form id="composer" class="hidden">
       <input id="msgInput" placeholder="发送消息…" autocomplete="off">
@@ -74,38 +129,63 @@
   <div id="members" class="hidden"></div>
 </main>
 
+<div id="modalMask"><div class="modal" id="modal"></div></div>
+<div id="toasts"></div>
+
 <script>
 'use strict';
-/* 可靠投递客户端协议实现：
- * - 发送：每条消息带唯一 clientMsgId，未收到 ACK 定时重发（服务端幂等去重）；
- * - 接收：按房间记录 lastSeenSeq，seq 小于等于它的一律丢弃（幂等消费）；
- * - ACK：累积确认，500ms 批量上报；
- * - 断线补发：重连后重新 join 并携带 lastSeenSeq，服务端回放缺口；
- * - lastSeenSeq 存 localStorage，刷新页面也不丢进度。
- */
+/* 群组化客户端：在可靠投递协议（clientMsgId 幂等发送 / seq 幂等消费 / 累积 ACK /
+ * 断线补发）之上，实现群组创建编辑、三种准入、邀请与申请、角色权限管理、公告与
+ * 异常通知。群资料随 joined/group_updated 更新，按钮按角色与权限矩阵显隐。 */
 const $ = (id) => document.getElementById(id);
-let ws = null, me = null, currentRoom = null;
-const rooms = new Map(); // roomId -> {name, role, mutedUntil, lastSeenSeq, msgs:[], pending:Map}
-let reconnectDelay = 500, ackTimer = null, retryTimer = null;
+let ws = null, me = null, currentRoom = null, sideTab = 'mine';
+const groups = new Map();       // roomId -> 群状态
+let discover = [];             // 公开群
+let myInvites = [];            // 我收到的定向邀请
+const pendingByRoom = new Map(); // roomId -> 未查看申请数（角标）
+let reconnectDelay = 500, ackTimer = null;
+
+const DEFAULT_PERMS = {
+  sendMessage: ['owner','admin','member'],
+  inviteMembers: ['owner','admin','member'],
+  editProfile: ['owner','admin'],
+  manageMembers: ['owner','admin'],
+  postAnnouncement: ['owner','admin'],
+};
+const MODE_LABEL = { public:'公开', approval:'申请加入', private:'私有' };
+const ROLE_LABEL = { owner:'群主', admin:'管理员', member:'成员' };
+
+function cur() { return groups.get(currentRoom); }
+function can(g, perm) {
+  if (!g) return false;
+  if (g.role === 'owner') return true;
+  const list = (g.group && g.group.permissions && g.group.permissions[perm]) || DEFAULT_PERMS[perm];
+  return list.includes(g.role);
+}
 
 const store = {
-  key: () => 'chat:' + me.name,
+  key: () => 'gchat:' + me.name,
   load() { try { return JSON.parse(localStorage.getItem(this.key())) || {}; } catch { return {}; } },
   save() {
     const o = {};
-    for (const [id, r] of rooms) o[id] = { name: r.name, lastSeenSeq: r.lastSeenSeq };
+    for (const [id, g] of groups) o[id] = { name: g.name, lastSeenSeq: g.lastSeenSeq };
     localStorage.setItem(this.key(), JSON.stringify(o));
   },
 };
 
-function setStatus(cls, text) {
-  $('status').className = cls; $('statusText').textContent = text;
+function setStatus(cls, text) { $('status').className = cls; $('statusText').textContent = text; }
+
+function toast(text, kind='') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = text;
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
 }
 
 async function login(name) {
   const res = await fetch('/api/login', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name }),
+    method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ name }),
   });
   if (!res.ok) throw new Error('登录失败');
   return res.json();
@@ -114,210 +194,575 @@ async function login(name) {
 function connect() {
   ws = new WebSocket(`ws://${location.host}/ws?token=${encodeURIComponent(me.token)}`);
   ws.onopen = () => {
-    setStatus('on', '已连接'); reconnectDelay = 500;
-    // 重连后恢复所有房间：携带本地进度，服务端补发缺口
-    const saved = store.load();
-    for (const [roomId, info] of Object.entries(saved)) {
-      ws.send(JSON.stringify({ type: 'join', room: roomId, lastSeq: info.lastSeenSeq || 0 }));
+    setStatus('on','已连接'); reconnectDelay = 500;
+    // 以服务端成员关系为权威列表拉取群组，再逐一带本地进度订阅/补发
+    send({type:'rooms'});
+    send({type:'invites'});
+    // 邀请链接 #join=<code>：连接后仅凭邀请码加入
+    const code = new URLSearchParams(location.hash.slice(1)).get('join');
+    if (code) {
+      send({type:'join', code});
+      history.replaceState(null, '', location.pathname);
+      switchTab('mine');
     }
   };
   ws.onmessage = (ev) => handle(JSON.parse(ev.data));
   ws.onclose = () => {
     setStatus('off', `已断开，${reconnectDelay}ms 后重连…`);
     setTimeout(connect, reconnectDelay);
-    reconnectDelay = Math.min(reconnectDelay * 2, 10000);
+    reconnectDelay = Math.min(reconnectDelay*2, 10000);
   };
   ws.onerror = () => ws.close();
 }
+function send(o){ if (ws && ws.readyState===1) ws.send(JSON.stringify(o)); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
-
+// ---------------------------------------------------------------- 帧处理
 function handle(m) {
   switch (m.type) {
     case 'welcome': break;
-    case 'joined': {
+    case 'joined': onJoined(m); break;
+    case 'msg': onMsg(m); break;
+    case 'ack': onAck(m); break;
+    case 'sync_done': if (m.hasMore) send({type:'sync', roomId:m.roomId, lastSeq:m.lastSeq}); break;
+    case 'history': onHistory(m); break;
+    case 'rooms': {
       const saved = store.load();
-      const r = rooms.get(m.roomId) || { msgs: [], pending: new Map(), lastSeenSeq: 0 };
-      r.name = m.name; r.role = m.role; r.mutedUntil = m.mutedUntil;
-      r.lastSeenSeq = Math.max(r.lastSeenSeq, saved[m.roomId]?.lastSeenSeq || 0);
-      rooms.set(m.roomId, r);
-      if (!currentRoom) currentRoom = m.roomId;
-      renderRooms(); render(); refreshMembers();
+      const serverIds = new Set(m.rooms.map((r)=>r.id));
+      // 本地残留但已不是成员的群组（被踢/退群发生在离线期）直接清除
+      for (const id of [...groups.keys()]) if (!serverIds.has(id)) groups.delete(id);
+      m.rooms.forEach((r)=>{
+        upsertGroup(r);
+        // 发起订阅并携带本地进度触发补发（服务端对已是成员的 join 幂等）
+        const lastSeq = saved[r.id]?.lastSeenSeq || 0;
+        send({type:'join', room:r.id, lastSeq});
+      });
+      store.save(); renderSide();
+      if (!currentRoom || !groups.has(currentRoom)) currentRoom = groups.keys().next().value || null;
+      renderAll();
       break;
     }
-    case 'msg': {
-      const r = rooms.get(m.roomId); if (!r) break;
-      if (m.seq <= r.lastSeenSeq) break;          // 幂等消费：重复投递直接丢弃
-      r.lastSeenSeq = m.seq;
-      // 自己发的消息：广播回包更新乐观插入的占位消息，不重复上屏
-      const own = m.clientMsgId ? r.msgs.findIndex((x) => x.clientMsgId === m.clientMsgId) : -1;
-      if (own >= 0) {
-        r.msgs[own] = { ...m, mine: true, pending: false };
-        r.pending.delete(m.clientMsgId);
-      } else {
-        r.msgs.push({ ...m, mine: m.from === me.userId });
-      }
-      if (r.msgs.length > 500) r.msgs.splice(0, r.msgs.length - 500);
-      store.save(); scheduleAck();
-      render();
-      break;
+    case 'members': if (m.roomId===currentRoom) renderMembers(m.members); break;
+    case 'group_updated': {
+      const g = groups.get(m.roomId);
+      if (g) { g.group = m.group; g.name = m.group.name; }
+      if (m.roomId===currentRoom) renderHeader();
+      renderSide(); toast('群组资料已更新'); break;
     }
-    case 'ack': {                                  // 服务端确认我发的消息（含分配的 seq）
-      const r = rooms.get(m.roomId); if (!r) break;
-      const p = r.pending.get(m.clientMsgId);
-      if (p) p.acked = true;
-      const own = r.msgs.find((x) => x.clientMsgId === m.clientMsgId);
-      if (own) { own.pending = false; own.seq = m.seq; }
-      render();
-      break;
-    }
-    case 'sync_done':
-      if (m.hasMore) send({ type: 'sync', roomId: m.roomId, lastSeq: m.lastSeq });
-      break;
-    case 'notice': {
-      const r = rooms.get(m.roomId);
-      if (r && m.userId === me.userId) r.mutedUntil = m.event === 'muted' ? m.until : 0;
-      sys(m.roomId, m.event === 'muted' ? `有成员被禁言至 ${new Date(m.until).toLocaleTimeString()}` : '有成员被解除禁言');
-      refreshMembers();
-      break;
-    }
-    case 'members':
-      if (m.roomId === currentRoom) renderMembers(m.members);
-      break;
-    case 'error':
-      sys(currentRoom, `错误 [${m.code}] ${m.message}`);
-      break;
-    case 'server_shutdown': sys(currentRoom, '服务器即将重启…'); break;
+    case 'group_info': openSettingsModal(m.group); break;
+    case 'groups': discover = m.groups; if (sideTab==='discover') renderSide(); break;
+    case 'notice': onNotice(m); break;
+    case 'announcement': onAnnouncement(m); break;
+    case 'announcement_saved': toast('公告已保存','ok'); break;
+    case 'kicked': onKicked(m); break;
+    case 'role_changed': onRoleChanged(m); break;
+    case 'group_dissolved': onDissolved(m); break;
+    case 'request_submitted': toast('入群申请已提交，等待审批','ok'); break;
+    case 'request_received': onRequestReceived(m); break;
+    case 'request_approved': onRequestApproved(m); break;
+    case 'request_rejected': toast(`入群申请未通过${m.reason==='GROUP_FULL'?'（群组已满）':''}`,'warn'); break;
+    case 'request_handled': toast(`已${m.status==='approved'?'批准':'驳回'}申请`, m.status==='approved'?'ok':'warn'); break;
+    case 'requests': renderRequestsModal(m.requests); break;
+    case 'my_requests': break;
+    case 'invite_created': onInviteCreated(m); break;
+    case 'invite_received': onInviteReceived(m); break;
+    case 'invites': myInvites = m.invites; updateInviteBadge(); if (sideTab==='invites') renderSide(); break;
+    case 'group_invites': renderInvitesManage(m); break;
+    case 'invite_revoked': onInviteRevoked(m); break;
+    case 'error': onError(m); break;
+    case 'server_shutdown': sys(currentRoom,'服务器即将重启…'); break;
   }
 }
 
+function upsertGroup(r) {
+  const g = groups.get(r.id) || { msgs:[], pending:new Map(), lastSeenSeq:0, announcement:null };
+  g.name = r.name; g.role = r.role; g.mutedUntil = r.mutedUntil;
+  g.roomMutedUntil = r.roomMutedUntil || 0;
+  // rooms 列表行为扁平字段；joined/group_updated 携带完整嵌套 group
+  g.group = {
+    ...(g.group || {}),
+    name:r.name, description:r.description, avatar:r.avatar,
+    joinMode:r.joinMode, maxMembers:r.maxMembers, retainDays:r.retainDays,
+    mutedUntil:r.roomMutedUntil || 0,
+    memberCount:r.memberCount ?? (g.group?.memberCount ?? 1),
+    permissions:r.permissions || g.group?.permissions || {},
+  };
+  groups.set(r.id, g);
+}
+
+function onJoined(m) {
+  const saved = store.load();
+  const g = groups.get(m.roomId) || { msgs:[], pending:new Map(), lastSeenSeq:0, announcement:null };
+  g.name = m.name; g.role = m.role; g.mutedUntil = m.mutedUntil;
+  g.group = m.group || g.group || { permissions:{} };
+  g.roomMutedUntil = m.group ? m.group.mutedUntil : 0;
+  g.lastSeenSeq = Math.max(g.lastSeenSeq, saved[m.roomId]?.lastSeenSeq || 0);
+  groups.set(m.roomId, g);
+  if (!currentRoom) currentRoom = m.roomId;
+  store.save(); renderSide(); render(); renderHeader(); refreshMembers();
+}
+
+function onMsg(m) {
+  const g = groups.get(m.roomId); if (!g) return;
+  if (m.seq <= g.lastSeenSeq) return;
+  g.lastSeenSeq = m.seq;
+  const own = m.clientMsgId ? g.msgs.findIndex((x)=>x.clientMsgId===m.clientMsgId) : -1;
+  if (own >= 0) { g.msgs[own] = {...m, mine:true, pending:false}; g.pending.delete(m.clientMsgId); }
+  else g.msgs.push({...m, mine:m.from===me.userId});
+  if (g.msgs.length>500) g.msgs.splice(0, g.msgs.length-500);
+  store.save(); scheduleAck(); render();
+}
+function onAck(m) {
+  const g = groups.get(m.roomId); if (!g) return;
+  const p = g.pending.get(m.clientMsgId); if (p) p.acked = true;
+  const own = g.msgs.find((x)=>x.clientMsgId===m.clientMsgId);
+  if (own) { own.pending=false; own.seq=m.seq; }
+  render();
+}
+function onHistory(m) {
+  const g = groups.get(m.roomId); if (!g) return;
+  const known = new Set(g.msgs.map((x)=>x.seq));
+  m.messages.forEach((x)=>{ if(!known.has(x.seq)) g.msgs.unshift({...x, mine:x.from===me.userId}); });
+  render();
+}
+
+function onNotice(m) {
+  const g = groups.get(m.roomId);
+  if (!g) { refreshMembers(); return; }
+  const map = {
+    member_joined:'有成员加入群组', member_left:'有成员退出群组', member_kicked:'有成员被移出群组',
+    muted:'有成员被禁言', unmuted:'有成员被解除禁言',
+    group_muted:'群组已开启全员禁言', group_unmuted:'群组已解除全员禁言',
+    admin_promoted:'有成员被设为管理员', admin_demoted:'有管理员被取消',
+    owner_transferred:'群主已转让',
+  };
+  if (m.userId === me.userId && m.event === 'muted') g.mutedUntil = m.until;
+  if (m.userId === me.userId && m.event === 'unmuted') g.mutedUntil = 0;
+  sys(m.roomId, map[m.event] || ('群组事件：'+m.event));
+  if (m.event==='group_muted') g.roomMutedUntil = m.until;
+  if (m.event==='group_unmuted') g.roomMutedUntil = 0;
+  refreshMembers(); renderHeader(); render();
+}
+
+function onAnnouncement(m) {
+  const g = groups.get(m.roomId);
+  if (g) { g.announcement = m.announcement; if (m.roomId===currentRoom) renderAnnouncement(); }
+}
+function onKicked(m) {
+  if (!groups.has(m.roomId)) return; // 幂等：广播与定向帧可能重复
+  sys(m.roomId,'你已被移出该群组');
+  groups.delete(m.roomId);
+  if (currentRoom===m.roomId) { currentRoom = groups.keys().next().value || null; renderAll(); }
+  store.save(); renderSide();
+  toast('你已被移出群组','warn');
+}
+function onRoleChanged(m) {
+  const g = groups.get(m.roomId);
+  if (g) {
+    // role_changed 定向发给当事人：收到者即本人
+    g.role = m.role;
+    toast(`你的角色已变更为「${ROLE_LABEL[m.role]}」`, m.role==='owner'?'ok':'warn');
+    renderHeader(); renderSide(); refreshMembers();
+  }
+}
+function onDissolved(m) {
+  if (!groups.has(m.roomId)) return; // 幂等：广播 + 定向兜底
+  sys(m.roomId, `群组「${m.name||''}」已被解散`);
+  groups.delete(m.roomId);
+  if (currentRoom===m.roomId) { currentRoom = groups.keys().next().value || null; renderAll(); }
+  store.save(); renderSide();
+  toast(`群组「${m.name||''}」已解散`,'warn');
+}
+function onRequestReceived(m) {
+  pendingByRoom.set(m.roomId, (pendingByRoom.get(m.roomId)||0)+1);
+  updateReqBadge();
+  toast(`「${m.userName}」申请加入 ${m.roomName}，请审批`,'warn');
+}
+function onRequestApproved(m) {
+  toast('入群申请已批准，已加入群组','ok');
+  // 服务端在审批通过时已通过 admitUser 下发 joined，无需重复加入
+}
+function onInviteReceived(m) {
+  send({type:'invites'});
+  toast(`收到「${m.roomName}」的入群邀请`,'ok');
+}
+function onInviteCreated(m) { renderInviteCreatedModal(m); }
+function onInviteRevoked(m) {
+  myInvites = myInvites.filter((i)=>i.code!==m.code);
+  updateInviteBadge(); if (sideTab==='invites') renderSide();
+  toast('一条邀请已被撤销','warn');
+}
+function onError(m) {
+  const g = m.ref && groups.get(m.ref);
+  const text = `[${m.code}] ${m.message}`;
+  sys(currentRoom, '错误 '+text);
+  toast(text,'err');
+}
+
+// ---------------------------------------------------------------- ACK / 补发
 function scheduleAck() {
   if (ackTimer) return;
-  ackTimer = setTimeout(() => {
-    ackTimer = null;
-    for (const [id, r] of rooms) if (r.lastSeenSeq > 0) send({ type: 'ack', roomId: id, seq: r.lastSeenSeq });
-  }, 500);
+  ackTimer = setTimeout(()=>{
+    ackTimer=null;
+    for (const [id,g] of groups) if (g.lastSeenSeq>0) send({type:'ack', roomId:id, seq:g.lastSeenSeq});
+  },500);
 }
-
-function refreshMembers() { if (currentRoom) send({ type: 'members', roomId: currentRoom }); }
-setInterval(refreshMembers, 5000);
-
-// 未 ACK 的消息每秒重发一次（clientMsgId 不变，服务端幂等）
-retryTimer = setInterval(() => {
-  for (const [roomId, r] of rooms) {
-    for (const [cid, p] of r.pending) {
-      if (!p.acked && Date.now() - p.sentAt > 1000) {
-        p.sentAt = Date.now();
-        send({ type: 'msg', roomId, clientMsgId: cid, content: p.content });
-      }
-    }
+// 未 ACK 消息每秒重发（clientMsgId 不变，服务端幂等）
+setInterval(()=>{
+  for (const [roomId,g] of groups) for (const [cid,p] of g.pending) {
+    if (!p.acked && Date.now()-p.sentAt>1000) { p.sentAt=Date.now(); send({type:'msg',roomId,clientMsgId:cid,content:p.content}); }
   }
-}, 1000);
+},1000);
 
 function sys(roomId, text) {
-  const r = rooms.get(roomId); if (!r) return;
-  r.msgs.push({ sys: text }); render();
+  const g = groups.get(roomId); if (!g) { if(currentRoom){const c=groups.get(currentRoom); c&&c.msgs.push({sys:text}); render();} return; }
+  g.msgs.push({sys:text}); render();
 }
 
-function renderRooms() {
-  $('roomList').innerHTML = [...rooms].map(([id, r]) =>
-    `<div class="room ${id === currentRoom ? 'active' : ''}" data-id="${id}">
-       <span>${escapeHtml(r.name || id)}</span>
-       <span class="badge">${r.role === 'admin' ? '管理员' : ''}</span>
-     </div>`).join('');
-  for (const el of $('roomList').children) {
-    el.onclick = () => { currentRoom = el.dataset.id; renderRooms(); render(); refreshMembers(); };
+// ---------------------------------------------------------------- 侧栏渲染
+function renderSide() {
+  const box = $('sideList');
+  if (sideTab==='mine') {
+    box.innerHTML = [...groups].map(([id,g])=>`
+      <div class="item ${id===currentRoom?'active':''}" data-id="${id}">
+        <span>${escapeHtml(g.name||id)}</span>
+        <span class="badge">${ROLE_LABEL[g.role]||''}</span>
+      </div>`).join('') || '<div class="badge" style="padding:8px">还没有群组，去「发现」看看或创建一个</div>';
+  } else if (sideTab==='discover') {
+    box.innerHTML = discover.map((g)=>`
+      <div class="item" data-join="${g.id}">
+        <span>${escapeHtml(g.name)} <span class="mode-tag">${MODE_LABEL[g.joinMode]}</span></span>
+        <span class="badge">${g.memberCount}/${g.maxMembers}</span>
+      </div>`).join('') || '<div class="badge" style="padding:8px">暂无公开群组</div>';
+  } else {
+    box.innerHTML = myInvites.map((i)=>`
+      <div class="inv-item">
+        <div class="line"><b>${escapeHtml(i.roomName)}</b>
+          <span class="badge">${i.expiresAt?('有效期至 '+new Date(i.expiresAt).toLocaleDateString()):'长期'}</span></div>
+        <div class="line"><span class="badge">邀请人：${escapeHtml(i.inviterName||'')}</span>
+          <button data-invcode="${i.code}" data-invroom="${i.roomId}">接受加入</button></div>
+      </div>`).join('') || '<div class="badge" style="padding:8px">没有待处理邀请</div>';
   }
+  box.querySelectorAll('[data-id]').forEach((el)=>el.onclick=()=>selectRoom(el.dataset.id));
+  box.querySelectorAll('[data-join]').forEach((el)=>el.onclick=()=>send({type:'join', room:el.dataset.join}));
+  box.querySelectorAll('[data-invcode]').forEach((el)=>el.onclick=()=>{
+    send({type:'join', room:el.dataset.invroom, code:el.dataset.invcode});
+    switchTab('mine');
+  });
+  document.querySelectorAll('.tabs button').forEach((b)=>b.classList.remove('active'));
+  $('tabMine').classList.toggle('active', sideTab==='mine');
+  $('tabDiscover').classList.toggle('active', sideTab==='discover');
+  $('tabInvites').classList.toggle('active', sideTab==='invites');
+}
+function switchTab(t){ sideTab=t; if(t==='discover') send({type:'group_discover'}); if(t==='invites') send({type:'invites'}); renderSide(); }
+function selectRoom(id){ currentRoom=id; renderAll(); }
+function renderAll(){ renderSide(); renderHeader(); renderAnnouncement(); render(); refreshMembers(); }
+
+// ---------------------------------------------------------------- 头部 / 成员
+function renderHeader() {
+  const g = cur();
+  $('roomHeader').classList.toggle('hidden', !g);
+  if (!g) return;
+  const info = g.group || {};
+  $('rhName').textContent = g.name;
+  $('rhSub').textContent =
+    `${MODE_LABEL[info.joinMode]||''} · ${ROLE_LABEL[g.role]||''} · ${info.memberCount??''}人` +
+    (info.retainDays?` · 保留${info.retainDays}天`:'');
+  $('settingsBtn').classList.toggle('hidden', !can(g,'editProfile'));
+  $('announceBtn').classList.toggle('hidden', !can(g,'postAnnouncement'));
+  $('inviteBtn').classList.toggle('hidden', !can(g,'inviteMembers'));
+  // 申请审批仅管理员可见
+  const isMgr = g.role==='owner'||g.role==='admin';
+  $('requestsBtn').classList.toggle('hidden', !isMgr);
+  $('leaveBtn').classList.toggle('hidden', g.role==='owner');
+  $('dissolveBtn').classList.toggle('hidden', g.role!=='owner');
+  updateReqBadge();
+}
+
+function renderAnnouncement() {
+  const g = cur(); const bar = $('announceBar');
+  if (g && g.announcement && g.announcement.content) {
+    bar.classList.add('show');
+    $('announceText').textContent = `${g.announcement.content}（${new Date(g.announcement.updatedAt).toLocaleString()}）`;
+  } else bar.classList.remove('show');
 }
 
 function render() {
-  const r = rooms.get(currentRoom);
-  $('composer').classList.toggle('hidden', !r);
-  $('members').classList.toggle('hidden', !r);
-  if (!r) return;
+  const g = cur();
+  $('composer').classList.toggle('hidden', !g);
+  $('members').classList.toggle('hidden', !g);
+  renderHeader();
+  if (!g) { $('messages').innerHTML=''; return; }
   const box = $('messages');
-  box.innerHTML = r.msgs.map((m) => {
-    if (m.sys) return `<div class="sys">${escapeHtml(m.sys)}</div>`;
-    const tick = m.mine ? `<span class="tick">${m.pending ? '…' : '✓'}</span>` : '';
-    return `<div class="msg ${m.mine ? 'mine' : ''}">
-      <div class="meta">${escapeHtml(m.fromName || '')} · #${m.seq} ${tick}</div>
-      <div>${escapeHtml(m.content)}</div></div>`;
+  box.innerHTML = g.msgs.map((mm)=>{
+    if (mm.sys) return `<div class="sys">${escapeHtml(mm.sys)}</div>`;
+    const tick = mm.mine?`<span class="tick">${mm.pending?'…':'✓'}</span>`:'';
+    return `<div class="msg ${mm.mine?'mine':''}">
+      <div class="meta">${escapeHtml(mm.fromName||'')} · #${mm.seq} ${tick}</div>
+      <div>${escapeHtml(mm.content)}</div></div>`;
   }).join('');
   box.scrollTop = box.scrollHeight;
-  const muted = r.mutedUntil > Date.now();
-  $('msgInput').placeholder = muted ? `你已被禁言至 ${new Date(r.mutedUntil).toLocaleTimeString()}` : '发送消息…';
-  $('msgInput').disabled = muted;
+  const muted = g.mutedUntil > Date.now();
+  const groupMuted = g.roomMutedUntil > Date.now() && g.role==='member';
+  const noPerm = g.group && g.group.permissions && g.group.permissions.sendMessage &&
+                 !g.group.permissions.sendMessage.includes(g.role) && g.role!=='owner';
+  const dis = muted || groupMuted || noPerm;
+  $('msgInput').placeholder = muted ? `你已被禁言至 ${new Date(g.mutedUntil).toLocaleTimeString()}`
+    : groupMuted ? '群组全员禁言中' : noPerm ? '你的角色无发言权限' : '发送消息…';
+  $('msgInput').disabled = dis;
 }
 
-// 把 members 响应接进渲染
+function refreshMembers(){ if(currentRoom) send({type:'members', roomId:currentRoom}); }
+setInterval(()=>{ if(currentRoom) refreshMembers(); }, 5000);
+
 function renderMembers(list) {
-  const r = rooms.get(currentRoom); if (!r) return;
-  $('members').innerHTML = '<b>成员</b>' + list.map((m) => {
+  const g = cur(); if (!g) return;
+  const isMgr = g.role==='owner'||g.role==='admin';
+  $('members').innerHTML = '<h3>成员（'+list.length+'）</h3>' + list.map((m)=>{
     const muted = m.mutedUntil > Date.now();
-    const adminBtns = r.role === 'admin' && m.userId !== me.userId && m.role !== 'admin'
-      ? (muted ? `<button data-act="unmute" data-uid="${m.userId}">解禁</button>`
-               : `<button data-act="mute" data-uid="${m.userId}">禁言</button>`) : '';
-    return `<div class="m"><span class="dot ${m.online ? 'on' : ''}"></span>
-      ${escapeHtml(m.name)}
-      ${m.role === 'admin' ? '<span class="tag">管理员</span>' : ''}
-      ${muted ? '<span class="tag muted">禁言中</span>' : ''}
-      ${adminBtns}</div>`;
-  }).join('');
-  $('members').querySelectorAll('button').forEach((b) => {
-    b.onclick = () => {
-      if (b.dataset.act === 'mute') {
-        const mins = prompt('禁言时长（分钟）', '10');
-        if (mins) send({ type: 'mute', roomId: currentRoom, userId: b.dataset.uid, minutes: Number(mins) });
-      } else {
-        send({ type: 'unmute', roomId: currentRoom, userId: b.dataset.uid });
+    const rank = {owner:3,admin:2,member:1}[g.role] || 1;
+    const trank = {owner:3,admin:2,member:1}[m.role] || 1;
+    let acts = '';
+    const uid = m.userId;
+    if (m.userId!==me.userId) {
+      if (g.role==='owner') {
+        acts += m.role==='admin'
+          ? `<button data-act="demote" data-uid="${uid}">取消管理</button>`
+          : (m.role==='member'?`<button data-act="promote" data-uid="${uid}">设管理</button>`:'');
+        if (m.role!=='owner') acts += `<button data-act="transfer" data-uid="${uid}">转让</button>`;
       }
-    };
+      if (isMgr && trank < rank && m.role!=='owner') {
+        // 移出：上级可移除下级（群主可移除管理员，管理员可移除成员）
+        acts += `<button data-act="kick" data-uid="${uid}">移出</button>`;
+      }
+      if (isMgr && m.role==='member') {
+        // 禁言仅针对普通成员（管理员/群主不可被禁言）
+        acts += muted ? `<button data-act="unmute" data-uid="${uid}">解禁</button>`
+                      : `<button data-act="mute" data-uid="${uid}">禁言</button>`;
+      }
+    }
+    return `<div class="m"><span class="dot ${m.online?'on':''}"></span>
+      ${escapeHtml(m.name)}
+      ${m.role!=='member'?`<span class="tag ${m.role}">${ROLE_LABEL[m.role]}</span>`:''}
+      ${muted?'<span class="tag muted">禁言中</span>':''}
+      ${acts?`<span class="acts">${acts}</span>`:''}</div>`;
+  }).join('');
+  $('members').querySelectorAll('button').forEach((b)=>b.onclick=()=>memberAction(b.dataset.act, b.dataset.uid, list));
+}
+
+function memberAction(act, uid, list) {
+  const target = list.find((x)=>x.userId===uid);
+  if (act==='mute') {
+    const mins = prompt('禁言时长（分钟，1..1440）','10');
+    if (mins) send({type:'mute', roomId:currentRoom, userId:uid, minutes:Number(mins)});
+  } else if (act==='unmute') send({type:'unmute', roomId:currentRoom, userId:uid});
+  else if (act==='kick') { if(confirm(`确定将 ${target?.name||''} 移出群组？`)) send({type:'group_kick', roomId:currentRoom, userId:uid}); }
+  else if (act==='promote') send({type:'group_set_admin', roomId:currentRoom, userId:uid, make:true});
+  else if (act==='demote') send({type:'group_set_admin', roomId:currentRoom, userId:uid, make:false});
+  else if (act==='transfer') {
+    if (confirm(`确定将群主转让给 ${target?.name||''}？转让后你将成为普通成员。`))
+      send({type:'group_transfer', roomId:currentRoom, userId:uid});
+  }
+}
+
+// ---------------------------------------------------------------- 角标
+function updateReqBadge(){
+  const n = pendingByRoom.get(currentRoom) || 0;
+  const b=$('reqBadge');
+  if(n>0){b.textContent=n; b.classList.remove('hidden');} else b.classList.add('hidden');
+}
+function updateInviteBadge(){ const b=$('inviteBadge'); const n=myInvites.length; if(n>0){b.textContent=n; b.classList.remove('hidden');} else b.classList.add('hidden'); }
+
+// ---------------------------------------------------------------- 弹窗
+const mask = $('modalMask'), modal = $('modal');
+function openModal(html){ modal.innerHTML = html; mask.classList.add('show'); }
+function closeModal(){ mask.classList.remove('show'); modal.innerHTML=''; }
+mask.addEventListener('click',(e)=>{ if(e.target===mask) closeModal(); });
+
+function permCheckboxes(perms) {
+  const names = {sendMessage:'发送消息', inviteMembers:'邀请成员', editProfile:'编辑资料', manageMembers:'成员管理', postAnnouncement:'发布公告'};
+  return `<div class="perms">
+    <span></span><span>群主</span><span>管理员</span><span>成员</span>` +
+    Object.keys(names).map((p)=>{
+      const list = perms[p] || DEFAULT_PERMS[p];
+      const cb=(role,disabled)=>`<label><input type="checkbox" data-perm="${p}" data-role="${role}" ${list.includes(role)?'checked':''} ${disabled?'disabled':''}></label>`;
+      return `<span class="pname">${names[p]}</span>${cb('owner',true)}${cb('admin')}${cb('member')}`;
+    }).join('') + '</div>';
+}
+function readPerms() {
+  const out = {};
+  modal.querySelectorAll('input[data-perm]').forEach((cb)=>{
+    (out[cb.dataset.perm] ||= []);
+    if (cb.checked) out[cb.dataset.perm].push(cb.dataset.role);
   });
+  out.sendMessage = out.sendMessage || []; if(!out.sendMessage.includes('owner')) out.sendMessage.unshift('owner');
+  return out;
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// 创建群组
+$('createBtn').onclick = () => {
+  openModal(`<h2>创建群组</h2>
+    <div class="field"><label>群组名</label><input id="fName" maxlength="64" required></div>
+    <div class="field"><label>简介</label><textarea id="fDesc" maxlength="500" rows="2"></textarea></div>
+    <div class="field"><label>准入模式</label>
+      <select id="fMode"><option value="public">公开（任何人可加入）</option>
+      <option value="approval">申请加入（需审批）</option>
+      <option value="private">私有（凭邀请加入）</option></select></div>
+    <div class="field"><label>最大人数（2..5000）</label><input id="fMax" type="number" value="200" min="2" max="5000"></div>
+    <div class="field"><label>消息保留天数（0=永久）</label><input id="fRetain" type="number" value="0" min="0" max="3650"></div>
+    <div class="field"><label>成员角色权限</label>${permCheckboxes(DEFAULT_PERMS)}</div>
+    <div class="row-actions"><button class="ghost" id="mCancel">取消</button><button id="mOk">创建</button></div>`);
+  $('mCancel').onclick = closeModal;
+  $('mOk').onclick = () => {
+    const name = $('fName').value.trim(); if(!name){ toast('请填写群组名','err'); return; }
+    send({type:'group_create', name, description:$('fDesc').value.trim(),
+      joinMode:$('fMode').value, maxMembers:Number($('fMax').value),
+      retainDays:Number($('fRetain').value), permissions:readPerms()});
+    closeModal(); switchTab('mine');
+  };
+};
+
+// 群组设置（拉取最新 group_info 后弹窗）
+$('settingsBtn').onclick = () => send({type:'group_info', roomId:currentRoom});
+function openSettingsModal(info) {
+  openModal(`<h2>群组设置</h2>
+    <div class="field"><label>群组名</label><input id="fName" maxlength="64" value="${escapeHtml(info.name)}"></div>
+    <div class="field"><label>简介</label><textarea id="fDesc" rows="2">${escapeHtml(info.description||'')}</textarea></div>
+    <div class="field"><label>准入模式</label><select id="fMode">
+      <option value="public" ${info.joinMode==='public'?'selected':''}>公开</option>
+      <option value="approval" ${info.joinMode==='approval'?'selected':''}>申请加入</option>
+      <option value="private" ${info.joinMode==='private'?'selected':''}>私有</option></select></div>
+    <div class="field"><label>最大人数</label><input id="fMax" type="number" value="${info.maxMembers}" min="2" max="5000"></div>
+    <div class="field"><label>消息保留天数（0=永久）</label><input id="fRetain" type="number" value="${info.retainDays}" min="0" max="3650"></div>
+    <div class="field"><label>成员角色权限</label>${permCheckboxes(info.permissions||{})}</div>
+    <div class="row-actions"><button class="ghost" id="mCancel">取消</button><button id="mOk">保存</button></div>`);
+  $('mCancel').onclick=closeModal;
+  $('mOk').onclick=()=>{
+    send({type:'group_update', roomId:currentRoom,
+      name:$('fName').value.trim(), description:$('fDesc').value.trim(),
+      joinMode:$('fMode').value, maxMembers:Number($('fMax').value),
+      retainDays:Number($('fRetain').value), permissions:readPerms()});
+    closeModal();
+  };
 }
 
-// ---------------------------------------------------------------- 事件绑定
+// 公告
+$('announceBtn').onclick = () => {
+  const g = cur();
+  const cur2 = g.announcement ? g.announcement.content : '';
+  openModal(`<h2>群组公告</h2>
+    <div class="field"><label>公告内容（清空即删除公告）</label>
+      <textarea id="fAnn" rows="4" maxlength="2000">${escapeHtml(cur2)}</textarea></div>
+    <div class="row-actions"><button class="ghost" id="mCancel">取消</button><button id="mOk">发布</button></div>`);
+  $('mCancel').onclick=closeModal;
+  $('mOk').onclick=()=>{ send({type:'group_announce', roomId:currentRoom, content:$('fAnn').value.trim()}); closeModal(); };
+};
 
+// 邀请
+$('inviteBtn').onclick = () => {
+  openModal(`<h2>邀请成员</h2>
+    <div class="field"><label>按昵称定向邀请（仅本人可领取，单次）</label>
+      <input id="fInvName" placeholder="对方昵称" maxlength="32"></div>
+    <div class="field"><label>或生成邀请码（可多人领取；有效天数 0=长期，次数 0=不限）</label>
+      <div style="display:flex;gap:6px">
+        <input id="fTtl" type="number" value="7" min="0" style="width:50%" title="有效天数">
+        <input id="fUses" type="number" value="1" min="0" style="width:50%" title="可用次数">
+      </div></div>
+    <div class="row-actions">
+      <button class="ghost" id="fList">现有邀请</button>
+      <span style="flex:1"></span>
+      <button class="ghost" id="mCancel">取消</button>
+      <button id="fDirect">定向邀请</button>
+      <button id="fCode">生成邀请码</button></div>`);
+  $('mCancel').onclick=closeModal;
+  $('fDirect').onclick=()=>{
+    const n=$('fInvName').value.trim(); if(!n){toast('请输入昵称','err');return;}
+    send({type:'group_invite_create', roomId:currentRoom, userName:n});
+  };
+  $('fCode').onclick=()=>{
+    const days=Number($('fTtl').value), uses=Number($('fUses').value);
+    send({type:'group_invite_create', roomId:currentRoom,
+      ttlMs: days===0?0:days*86400000, maxUses: uses});
+  };
+  $('fList').onclick=()=>send({type:'group_invites', roomId:currentRoom});
+};
+function renderInviteCreatedModal(m) {
+  const link = `${location.origin}/#join=${encodeURIComponent(m.code)}`;
+  const who = m.inviteeId ? '已向对方发送定向邀请' : '邀请码已生成';
+  openModal(`<h2>${who}</h2>
+    <div class="field"><label>邀请码（加入时在「发现/邀请」中使用，或点接受）</label>
+      <div class="code-box">${escapeHtml(m.code)}</div></div>
+    <div class="field"><label>邀请链接</label><div class="code-box">${escapeHtml(link)}</div></div>
+    <div class="row-actions"><button id="mCopy">复制邀请码</button><button class="ghost" id="mOk">完成</button></div>`);
+  $('mOk').onclick=closeModal;
+  $('mCopy').onclick=()=>{ navigator.clipboard?.writeText(m.code); toast('已复制','ok'); };
+}
+function renderInvitesManage(m) {
+  openModal(`<h2>现有邀请</h2>
+    ${m.invites.length? m.invites.map((i)=>`
+      <div class="inv-item">
+        <div class="line"><span class="code-box">${escapeHtml(i.code)}</span></div>
+        <div class="line"><span class="badge">${i.inviteeName?('定向：'+escapeHtml(i.inviteeName)):'邀请码'} · 已用 ${i.uses}/${i.maxUses===0?'∞':i.maxUses}</span>
+        <button data-revoke="${i.code}">撤销</button></div>
+      </div>`).join('') : '<div class="badge">暂无邀请</div>'}
+    <div class="row-actions"><button class="ghost" id="mOk">关闭</button></div>`);
+  $('mOk').onclick=closeModal;
+  modal.querySelectorAll('[data-revoke]').forEach((b)=>b.onclick=()=>send({type:'group_invite_revoke', code:b.dataset.revoke}));
+}
+
+// 入群申请审批
+$('requestsBtn').onclick = () => { pendingByRoom.set(currentRoom, 0); updateReqBadge(); send({type:'group_requests', roomId:currentRoom}); };
+function renderRequestsModal(reqs) {
+  openModal(`<h2>入群申请（${reqs.length}）</h2>
+    ${reqs.length? reqs.map((q)=>`
+      <div class="req-item">
+        <div class="line"><b>${escapeHtml(q.userName)}</b><span class="badge">${new Date(q.createdAt).toLocaleString()}</span></div>
+        ${q.message?`<div>${escapeHtml(q.message)}</div>`:''}
+        <div class="line"><span></span><span>
+          <button data-appr="${q.id}">批准</button>
+          <button class="danger" data-rej="${q.id}">驳回</button></span></div>
+      </div>`).join('') : '<div class="badge">没有待处理申请</div>'}
+    <div class="row-actions"><button class="ghost" id="mOk">关闭</button></div>`);
+  $('mOk').onclick=()=>{ send({type:'group_requests', roomId:currentRoom}); closeModal(); };
+  modal.querySelectorAll('[data-appr]').forEach((b)=>b.onclick=()=>send({type:'group_request_handle', requestId:b.dataset.appr, approve:true}));
+  modal.querySelectorAll('[data-rej]').forEach((b)=>b.onclick=()=>send({type:'group_request_handle', requestId:b.dataset.rej, approve:false}));
+}
+
+// 退群 / 解散
+$('leaveBtn').onclick = () => { if(confirm('确定退出该群组？')) send({type:'leave', roomId:currentRoom}); };
+$('dissolveBtn').onclick = () => {
+  if (confirm('确定解散该群组？此操作不可恢复，全部成员与消息将被删除。'))
+    send({type:'group_dissolve', roomId:currentRoom});
+};
+
+// tabs
+$('tabMine').onclick=()=>switchTab('mine');
+$('tabDiscover').onclick=()=>switchTab('discover');
+$('tabInvites').onclick=()=>switchTab('invites');
+
+// ---------------------------------------------------------------- 登录 / 发送
 $('loginForm').onsubmit = async (e) => {
   e.preventDefault();
-  const name = $('nameInput').value.trim(); if (!name) return;
+  const name=$('nameInput').value.trim(); if(!name) return;
   me = await login(name);
-  // 恢复房间进度
   const saved = store.load();
-  for (const [id, info] of Object.entries(saved)) {
-    rooms.set(id, { name: info.name, msgs: [], pending: new Map(), lastSeenSeq: info.lastSeenSeq || 0 });
-  }
+  for (const [id,info] of Object.entries(saved))
+    groups.set(id,{name:info.name,msgs:[],pending:new Map(),lastSeenSeq:info.lastSeenSeq||0,announcement:null,role:'member',group:{permissions:{}}});
   $('loginForm').classList.add('hidden');
-  $('roomPanel').classList.remove('hidden');
+  $('appPanel').classList.remove('hidden');
   $('who').textContent = `${me.name} (${me.userId})`;
   connect();
 };
 
-$('createForm').onsubmit = (e) => {
-  e.preventDefault();
-  const name = $('roomInput').value.trim(); if (!name) return;
-  send({ type: 'create_room', name });
-  $('roomInput').value = '';
-};
-
-$('joinBtn').onclick = () => {
-  const name = prompt('输入要加入的房间名');
-  if (name) send({ type: 'join', room: name, lastSeq: 0 });
-};
-
 $('composer').onsubmit = (e) => {
   e.preventDefault();
-  const content = $('msgInput').value.trim(); if (!content || !currentRoom) return;
+  const content=$('msgInput').value.trim(); if(!content||!currentRoom) return;
   const cid = crypto.randomUUID();
-  const r = rooms.get(currentRoom);
-  r.pending.set(cid, { content, sentAt: Date.now(), acked: false });
-  r.msgs.push({ mine: true, fromName: me.name, content, seq: '…', pending: true, clientMsgId: cid });
-  send({ type: 'msg', roomId: currentRoom, clientMsgId: cid, content });
-  $('msgInput').value = '';
-  render();
+  const g = cur();
+  g.pending.set(cid,{content,sentAt:Date.now(),acked:false});
+  g.msgs.push({mine:true,fromName:me.name,content,seq:'…',pending:true,clientMsgId:cid});
+  send({type:'msg',roomId:currentRoom,clientMsgId:cid,content});
+  $('msgInput').value=''; render();
 };
 </script>
 </body>

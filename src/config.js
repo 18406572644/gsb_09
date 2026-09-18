@@ -32,6 +32,13 @@ module.exports = {
   rateLimitPerSec: Number(process.env.RATE_LIMIT_PER_SEC || 10),
   rateLimitBurst: Number(process.env.RATE_LIMIT_BURST || 20),
 
+  // 群组
+  groupMaxMembersCap: Number(process.env.GROUP_MAX_MEMBERS_CAP || 5_000), // maxMembers 允许设置的硬上限
+  groupInviteTtlMs: Number(process.env.GROUP_INVITE_TTL_MS || 7 * 86_400_000), // 邀请默认有效期 7 天
+  groupInviteMaxTtlMs: Number(process.env.GROUP_INVITE_MAX_TTL_MS || 30 * 86_400_000),
+  retentionSweepMs: Number(process.env.RETENTION_SWEEP_MS || 3_600_000), // 消息保留期清理扫描周期
+  groupListLimit: Number(process.env.GROUP_LIST_LIMIT || 50), // 公开群组发现列表条数
+
   // 演示用鉴权：token 签名密钥（生产环境务必替换）
   authSecret: process.env.AUTH_SECRET || 'dev-secret-change-me',
 };
