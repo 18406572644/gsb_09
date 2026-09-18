@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>可靠聊天室</title>
+<title>群组聊天平台</title>
 <style>
   * { box-sizing: border-box; margin: 0; }
   body { font: 14px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -12,39 +12,79 @@
   header h1 { font-size: 16px; margin-right: auto; }
   #status { width: 10px; height: 10px; border-radius: 50%; background: #666; }
   #status.on { background: #3ecf6e; } #status.off { background: #e05252; }
-  input, button { font: inherit; padding: 7px 10px; border-radius: 6px; border: 1px solid #2a3550;
-                  background: #1c2539; color: inherit; }
+  input, select, textarea, button { font: inherit; padding: 7px 10px; border-radius: 6px;
+                  border: 1px solid #2a3550; background: #1c2539; color: inherit; }
+  textarea { resize: vertical; }
   button { cursor: pointer; background: #2f6fed; border-color: #2f6fed; color: #fff; }
+  button.ghost { background: #26314a; border-color: #34415f; color: #c8d2ea; }
+  button.danger { background: #c0392b; border-color: #c0392b; }
   button:disabled { opacity: .5; cursor: default; }
   main { flex: 1; display: flex; min-height: 0; }
-  #sidebar { width: 220px; background: #161d2e; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  #sidebar .room { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; }
+  #sidebar { width: 230px; background: #161d2e; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+  #sidebar .room { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
   #sidebar .room.active, #sidebar .room:hover { background: #24304d; }
-  #sidebar .badge { color: #7f8db3; font-size: 12px; }
+  #sidebar .room .line1 { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  #sidebar .badge { font-size: 11px; border-radius: 4px; padding: 0 5px; }
+  #sidebar .badge.owner { color: #1a1a1a; background: #f0b429; }
+  #sidebar .badge.admin { color: #f0b429; border: 1px solid #6b5420; }
+  #sidebar .mode { color: #7f8db3; font-size: 11px; }
   #chat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #roomHeader { padding: 8px 16px; background: #161d2e; border-bottom: 1px solid #232d45;
+                display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #roomHeader h2 { font-size: 15px; }
+  #roomHeader .spacer { margin-left: auto; display: flex; gap: 6px; }
+  #announceBar { margin: 8px 16px 0; padding: 8px 12px; border-left: 3px solid #f0b429;
+                 background: #1d2438; border-radius: 4px; font-size: 13px; white-space: pre-wrap;
+                 max-height: 90px; overflow: auto; display: none; }
   #messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
   .msg { max-width: 70%; padding: 8px 12px; border-radius: 10px; background: #1c2539; align-self: flex-start; }
   .msg.mine { background: #2f6fed; align-self: flex-end; }
   .msg .meta { font-size: 11px; opacity: .65; margin-bottom: 2px; }
   .msg .tick { font-size: 11px; opacity: .7; }
-  .sys { align-self: center; font-size: 12px; color: #7f8db3; }
+  .sys { align-self: center; font-size: 12px; color: #7f8db3; text-align: center; }
   #composer { display: flex; gap: 8px; padding: 12px 16px; background: #161d2e; }
   #composer input { flex: 1; }
-  #members { width: 200px; background: #161d2e; padding: 12px; overflow-y: auto; }
-  #members .m { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 13px; }
+  #members { width: 230px; background: #161d2e; padding: 12px; overflow-y: auto; }
+  #members .m { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 13px; flex-wrap: wrap; }
   #members .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
   #members .dot.on { background: #3ecf6e; }
   #members .tag { font-size: 11px; color: #f0b429; }
+  #members .tag.owner { color: #1a1a1a; background: #f0b429; border-radius: 4px; padding: 0 4px; }
   #members .tag.muted { color: #e05252; }
-  #members button { padding: 2px 6px; font-size: 11px; margin-left: auto; }
+  #members .acts { margin-left: auto; display: flex; gap: 4px; }
+  #members .acts button { padding: 2px 6px; font-size: 11px; }
   .hidden { display: none !important; }
+  /* 弹窗 */
+  #modalRoot { position: fixed; inset: 0; background: rgba(5,8,15,.6); display: flex;
+               align-items: center; justify-content: center; z-index: 10; }
+  .modal-box { background: #18213a; border: 1px solid #2c3a5c; border-radius: 10px; padding: 18px;
+               width: min(560px, 92vw); max-height: 86vh; overflow-y: auto; }
+  .modal-box h3 { margin-bottom: 12px; font-size: 15px; }
+  .modal-box label { display: block; font-size: 12px; color: #93a0c2; margin: 10px 0 4px; }
+  .modal-box input, .modal-box select, .modal-box textarea { width: 100%; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .row-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #232d45; }
+  .row-item .grow { flex: 1; min-width: 0; }
+  .row-item .sub { font-size: 12px; color: #7f8db3; overflow: hidden; text-overflow: ellipsis; }
+  .perm-grid { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+  .perm-grid td, .perm-grid th { padding: 4px 6px; border-bottom: 1px solid #232d45; text-align: center; }
+  .perm-grid th:first-child, .perm-grid td:first-child { text-align: left; color: #b9c4e0; }
+  .inv-dot { position: relative; }
+  .inv-dot #invCount { position: absolute; top: -6px; right: -8px; background: #e05252; color: #fff;
+                       font-size: 10px; border-radius: 8px; padding: 0 5px; }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 20;
+           display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  #toast .t { background: #2a3553; border: 1px solid #3d4d74; padding: 8px 14px; border-radius: 8px;
+              font-size: 13px; max-width: 70vw; }
+  #toast .t.err { border-color: #7a3b34; background: #3a2330; }
 </style>
 </head>
 <body>
 <header>
-  <h1>可靠聊天室</h1>
+  <h1>群组聊天平台</h1>
   <span id="status" class="off"></span><span id="statusText">未连接</span>
   <span id="who"></span>
+  <button id="inviteInboxBtn" class="ghost inv-dot hidden">我的邀请<span id="invCount" class="hidden">0</span></button>
 </header>
 
 <main>
@@ -54,16 +94,27 @@
       <button style="width:100%;margin-top:8px">登录</button>
     </form>
     <div id="roomPanel" class="hidden" style="display:flex;flex-direction:column;gap:8px">
-      <form id="createForm" style="display:flex;gap:6px">
-        <input id="roomInput" placeholder="房间名" maxlength="64" style="flex:1;min-width:0">
-        <button type="submit">建</button>
-      </form>
-      <button id="joinBtn">加入房间</button>
+      <button id="createBtn">＋ 创建群组</button>
+      <button id="discoverBtn" class="ghost">发现群组</button>
       <div id="roomList"></div>
     </div>
   </div>
 
   <div id="chat">
+    <div id="roomHeader" class="hidden">
+      <h2 id="rhName"></h2>
+      <span id="rhMode" class="mode"></span>
+      <span id="rhCount" class="mode"></span>
+      <span class="spacer">
+        <button id="announceBtn" class="ghost hidden">公告</button>
+        <button id="muteAllBtn" class="ghost hidden">全员禁言</button>
+        <button id="inviteBtn" class="ghost hidden">邀请</button>
+        <button id="requestsBtn" class="ghost hidden">入群申请<span id="reqCount"></span></button>
+        <button id="settingsBtn" class="ghost hidden">群设置</button>
+        <button id="leaveBtn" class="ghost">退群</button>
+      </span>
+    </div>
+    <div id="announceBar"></div>
     <div id="messages"></div>
     <form id="composer" class="hidden">
       <input id="msgInput" placeholder="发送消息…" autocomplete="off">
@@ -74,19 +125,43 @@
   <div id="members" class="hidden"></div>
 </main>
 
+<div id="modalRoot" class="hidden"><div class="modal-box" id="modalBox"></div></div>
+<div id="toast"></div>
+
 <script>
 'use strict';
-/* 可靠投递客户端协议实现：
- * - 发送：每条消息带唯一 clientMsgId，未收到 ACK 定时重发（服务端幂等去重）；
- * - 接收：按房间记录 lastSeenSeq，seq 小于等于它的一律丢弃（幂等消费）；
- * - ACK：累积确认，500ms 批量上报；
- * - 断线补发：重连后重新 join 并携带 lastSeenSeq，服务端回放缺口；
- * - lastSeenSeq 存 localStorage，刷新页面也不丢进度。
+/* 群组化客户端：
+ * - 可靠投递：clientMsgId 乐观发送 + 超时重发（服务端幂等）；按 seq 去重消费；累积 ACK；
+ *   重连后按 localStorage 进度重新 join 补发；
+ * - 群组：创建（公开/申请/私有）、发现与申请、邀请收件箱、群资料与权限矩阵设置、
+ *   成员治理（禁言/管理员/踢人/转让/解散）、公告、全员禁言。
  */
 const $ = (id) => document.getElementById(id);
 let ws = null, me = null, currentRoom = null;
-const rooms = new Map(); // roomId -> {name, role, mutedUntil, lastSeenSeq, msgs:[], pending:Map}
+const rooms = new Map(); // roomId -> {name, role, perms, group, mutedUntil, lastSeenSeq, msgs, pending}
+let invites = [];       // 我收到的待处理邀请
+let pendingReqCount = 0; // 当前群待审批申请数
+let requestsModalOpen = false; // 审批弹窗是否打开（控制 requests 帧是否渲染弹窗）
 let reconnectDelay = 500, ackTimer = null, retryTimer = null;
+let initialSyncDone = false; // 本次连接是否已完成「以服务端成员关系为准」的首轮订阅
+let subscribed = new Set();  // 本次 WS 连接已订阅（join 成功）的 roomId
+
+const MODE_LABEL = { open: '公开', apply: '申请加入', private: '私有' };
+const ROLE_LABEL = { owner: '群主', admin: '管理员', member: '成员' };
+const ROLE_RANK = { owner: 3, admin: 2, member: 1 };
+const PERM_TITLES = {
+  'msg.send': '发送消息',
+  'group.announce': '发布公告',
+  'group.edit': '编辑群资料与设置',
+  'member.invite': '邀请成员',
+  'request.review': '审批入群申请',
+  'member.promote': '设置/撤销管理员',
+  'member.mute': '禁言/解禁成员',
+  'member.kick': '移出成员',
+};
+const PERM_KEYS = Object.keys(PERM_TITLES);
+// 权限矩阵可配置项（msg.send 受全员禁言策略单独约束，仍允许在矩阵中收窄）
+const MATRIX_PERMS = PERM_KEYS;
 
 const store = {
   key: () => 'chat:' + me.name,
@@ -98,8 +173,14 @@ const store = {
   },
 };
 
-function setStatus(cls, text) {
-  $('status').className = cls; $('statusText').textContent = text;
+function setStatus(cls, text) { $('status').className = cls; $('statusText').textContent = text; }
+
+function toast(text, isErr) {
+  const el = document.createElement('div');
+  el.className = 't' + (isErr ? ' err' : '');
+  el.textContent = text;
+  $('toast').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
 }
 
 async function login(name) {
@@ -115,11 +196,12 @@ function connect() {
   ws = new WebSocket(`ws://${location.host}/ws?token=${encodeURIComponent(me.token)}`);
   ws.onopen = () => {
     setStatus('on', '已连接'); reconnectDelay = 500;
-    // 重连后恢复所有房间：携带本地进度，服务端补发缺口
-    const saved = store.load();
-    for (const [roomId, info] of Object.entries(saved)) {
-      ws.send(JSON.stringify({ type: 'join', room: roomId, lastSeq: info.lastSeenSeq || 0 }));
-    }
+    initialSyncDone = false;
+    subscribed = new Set();
+    // 以服务端成员关系为准：先拉 rooms，收到后只重新订阅「仍是成员」的群，
+    // 避免被踢/退群/解散后（尤其离线期间错过通知帧）盲目 join 又把自己加回公开群
+    send({ type: 'rooms' });
+    send({ type: 'invitations' });
   };
   ws.onmessage = (ev) => handle(JSON.parse(ev.data));
   ws.onclose = () => {
@@ -132,24 +214,84 @@ function connect() {
 
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 
+function can(roomId, perm) {
+  const r = rooms.get(roomId);
+  return !!(r && r.perms && r.perms[perm]);
+}
+
 function handle(m) {
   switch (m.type) {
     case 'welcome': break;
+
+    case 'rooms': {
+      // 服务端成员关系为权威：合并群信息
+      const serverIds = new Set(m.rooms.map((g) => g.id));
+      for (const g of m.rooms) {
+        const r = rooms.get(g.id) || { msgs: [], pending: new Map(), lastSeenSeq: 0 };
+        r.name = g.name; r.role = g.role; r.mutedUntil = g.mutedUntil;
+        r.group = g; r.perms = permsOf(g);
+        rooms.set(g.id, r);
+      }
+      // 清理成员关系已终结（被踢/退群/解散，尤其离线期间错过通知帧）的本地群
+      for (const id of [...rooms.keys()]) {
+        if (!serverIds.has(id)) removeRoomLocal(id);
+      }
+      // 每条连接首次收到 rooms 后，重新订阅仍是成员的群（携带本地进度触发补发）
+      if (!initialSyncDone) {
+        initialSyncDone = true;
+        const saved = store.load();
+        for (const id of serverIds) {
+          if (!subscribed.has(id)) {
+            send({ type: 'join', room: id, lastSeq: saved[id]?.lastSeenSeq || 0 });
+          }
+        }
+      }
+      renderRooms(); renderHeader(); render();
+      break;
+    }
+
     case 'joined': {
+      subscribed.add(m.roomId);
       const saved = store.load();
       const r = rooms.get(m.roomId) || { msgs: [], pending: new Map(), lastSeenSeq: 0 };
       r.name = m.name; r.role = m.role; r.mutedUntil = m.mutedUntil;
+      if (m.group) r.group = m.group;
+      r.perms = m.permissions || (m.role === 'owner' ? Object.fromEntries(PERM_KEYS.map((k) => [k, true])) : r.perms);
       r.lastSeenSeq = Math.max(r.lastSeenSeq, saved[m.roomId]?.lastSeenSeq || 0);
       rooms.set(m.roomId, r);
       if (!currentRoom) currentRoom = m.roomId;
-      renderRooms(); render(); refreshMembers();
+      store.save(); renderRooms(); renderHeader(); render(); refreshMembers();
       break;
     }
+
+    case 'group_updated': {
+      const r = rooms.get(m.roomId);
+      if (r) {
+        r.group = { ...(r.group || {}), ...m.group };
+        if (m.permissions) r.group.rolePermissions = m.permissions;
+        // 重新计算我的有效权限（owner 恒全开；其余请服务端给权威表——这里用 group_info 兜底）
+        if (r.role !== 'owner') send({ type: 'group_info', room: m.roomId });
+      }
+      renderRooms(); renderHeader(); renderAnnouncement(); render();
+      break;
+    }
+
+    case 'group_info': {
+      const r = rooms.get(m.group.id);
+      if (r && m.group.member) {
+        r.role = m.group.myRole; r.mutedUntil = m.group.mutedUntil;
+        r.perms = m.group.permissions; r.group = { ...(r.group || {}), ...m.group };
+        renderRooms(); renderHeader(); renderMembersLatest(); render();
+      } else if (!$('#modalRoot').classList.contains('hidden')) {
+        // 弹窗打开时的群资料响应（发现详情的扩展位）
+      }
+      break;
+    }
+
     case 'msg': {
       const r = rooms.get(m.roomId); if (!r) break;
-      if (m.seq <= r.lastSeenSeq) break;          // 幂等消费：重复投递直接丢弃
+      if (m.seq <= r.lastSeenSeq) break;
       r.lastSeenSeq = m.seq;
-      // 自己发的消息：广播回包更新乐观插入的占位消息，不重复上屏
       const own = m.clientMsgId ? r.msgs.findIndex((x) => x.clientMsgId === m.clientMsgId) : -1;
       if (own >= 0) {
         r.msgs[own] = { ...m, mine: true, pending: false };
@@ -162,7 +304,8 @@ function handle(m) {
       render();
       break;
     }
-    case 'ack': {                                  // 服务端确认我发的消息（含分配的 seq）
+
+    case 'ack': {
       const r = rooms.get(m.roomId); if (!r) break;
       const p = r.pending.get(m.clientMsgId);
       if (p) p.acked = true;
@@ -171,25 +314,148 @@ function handle(m) {
       render();
       break;
     }
+
     case 'sync_done':
       if (m.hasMore) send({ type: 'sync', roomId: m.roomId, lastSeq: m.lastSeq });
       break;
-    case 'notice': {
+
+    case 'announcement': {
       const r = rooms.get(m.roomId);
-      if (r && m.userId === me.userId) r.mutedUntil = m.event === 'muted' ? m.until : 0;
-      sys(m.roomId, m.event === 'muted' ? `有成员被禁言至 ${new Date(m.until).toLocaleTimeString()}` : '有成员被解除禁言');
-      refreshMembers();
+      if (r) r.group = { ...(r.group || {}), announcement: m.content, announcementAt: m.at };
+      sys(m.roomId, `📢 ${m.byName || '管理员'} 发布了新公告`);
+      renderAnnouncement();
       break;
     }
+
+    case 'notice': handleNotice(m); break;
+
     case 'members':
       if (m.roomId === currentRoom) renderMembers(m.members);
       break;
-    case 'error':
-      sys(currentRoom, `错误 [${m.code}] ${m.message}`);
+
+    // —— 邀请 ——
+    case 'invitation':
+      invites.push(m.invitation); renderInviteCount();
+      toast(`收到来自 ${m.invitation.inviterName} 的群邀请：${m.invitation.roomName}`);
       break;
-    case 'server_shutdown': sys(currentRoom, '服务器即将重启…'); break;
+    case 'invitations':
+      invites = m.invitations; renderInviteCount();
+      if (!$('#modalRoot').classList.contains('hidden')) renderInbox();
+      break;
+    case 'invite_sent': toast(`邀请已发送给该用户`); break;
+    case 'invitation_accepted':
+      sysAny(m.roomId, `${m.userName} 接受了群邀请`); break;
+    case 'invitation_declined':
+      sysAny(m.roomId, `${m.userName} 拒绝了群邀请`); break;
+    case 'invitation_revoked':
+      invites = invites.filter((i) => i.id !== m.invitationId); renderInviteCount();
+      toast('一条群邀请被撤销'); break;
+
+    // —— 入群申请 ——
+    case 'join_requested':
+      toast(m.status === 'pending' ? '入群申请已提交，等待审批' : '你已有一条待审批的申请');
+      break;
+    case 'request_created':
+      if (m.roomId === currentRoom && can(m.roomId, 'request.review')) {
+        pendingReqCount++; renderHeader();
+        toast(`新的入群申请：${m.request.userName || m.request.userId}`);
+      } else if (can(m.roomId, 'request.review')) {
+        toast(`群组有新的入群申请`);
+      }
+      break;
+    case 'requests':
+      // 每次进入有审批权的群都会拉取计数；仅当用户打开了审批弹窗才渲染列表
+      if (m.roomId === currentRoom) { pendingReqCount = m.requests.length; renderHeader(); }
+      if (requestsModalOpen && m.roomId === currentRoom) renderRequests(m);
+      break;
+    case 'request_approved':
+      toast(`你加入「${m.name}」的申请已通过`);
+      // 在线时服务端已自动下发 joined；只有尚未入群（离线期间被批准）时才主动 join
+      if (!rooms.has(m.roomId)) send({ type: 'join', room: m.roomId, lastSeq: 0 });
+      break;
+    case 'request_rejected':
+      toast(`你加入「${m.name}」的申请未被通过`, true); break;
+
+    // —— 成员关系终结 ——
+    case 'removed':
+      removeRoomLocal(m.roomId);
+      toast(`你被移出了群组「${m.name}」`, true);
+      break;
+    case 'group_disbanded':
+      removeRoomLocal(m.roomId);
+      toast(`群组「${m.name}」已被解散`, true);
+      break;
+
+    case 'left':
+      // 退群应答：多端场景下自己的其他设备也会收到，统一移除本地群（发起设备已移除则为幂等 no-op）
+      removeRoomLocal(m.roomId);
+      break;
+    case 'discover': renderDiscoverResults(m.groups); break;
+    case 'error':
+      if (currentRoom) sys(currentRoom, `错误 [${m.code}] ${m.message}`);
+      toast(`${m.code}: ${m.message}`, true);
+      break;
+    case 'server_shutdown': toast('服务器即将重启…'); break;
   }
 }
+
+function permsOf(g) {
+  if (g.permissions) return { ...g.permissions };
+  if (g.role === 'owner') return Object.fromEntries(PERM_KEYS.map((k) => [k, true]));
+  return Object.fromEntries(PERM_KEYS.map((k) => [k, false]));
+}
+
+function removeRoomLocal(roomId) {
+  const wasCurrent = currentRoom === roomId;
+  rooms.delete(roomId);
+  const saved = store.load(); delete saved[roomId]; localStorage.setItem(store.key(), JSON.stringify(saved));
+  if (wasCurrent) {
+    currentRoom = rooms.size ? [...rooms.keys()][0] : null;
+  }
+  renderRooms(); renderHeader(); renderAnnouncement(); render(); refreshMembers();
+}
+
+const NOTICE_TEXT = {
+  member_joined: (m) => `${m.userName || m.userId} 加入了群组`,
+  member_left: (m) => `${m.userName || m.userId} 退出了群组`,
+  member_removed: (m) => `${m.userName || m.userId} 被移出群组`,
+  muted: (m) => `${m.userName || m.userId} 被禁言至 ${new Date(m.until).toLocaleString()}`,
+  unmuted: (m) => `${m.userName || m.userId} 被解除禁言`,
+  mute_all_on: (m) => `管理员开启了全员禁言${m.until ? '（至 ' + new Date(m.until).toLocaleString() + '）' : ''}`,
+  mute_all_off: () => '全员禁言已解除',
+  settings_changed: () => '群组设置已更新',
+  permissions_changed: () => '角色权限已更新',
+};
+
+function handleNotice(m) {
+  const r = rooms.get(m.roomId);
+
+  if (m.event === 'role_changed') {
+    if (m.userId === me.userId) { send({ type: 'group_info', room: m.roomId }); send({ type: 'rooms' }); }
+    sys(m.roomId, `${m.userName || m.userId} 已被${m.role === 'admin' ? '设为管理员' : '取消管理员身份'}`);
+    refreshMembers(); renderRooms();
+    return;
+  }
+  if (m.event === 'owner_changed') {
+    if (m.to === me.userId) { send({ type: 'group_info', room: m.roomId }); send({ type: 'rooms' }); }
+    sys(m.roomId, `群主已由 ${m.fromName || m.from} 转让给 ${m.toName || m.to}`);
+    refreshMembers(); renderRooms(); renderHeader();
+    return;
+  }
+  if (m.event === 'muted' && r && m.userId === me.userId) r.mutedUntil = m.until;
+  if (m.event === 'unmuted' && r && m.userId === me.userId) r.mutedUntil = 0;
+
+  const fn = NOTICE_TEXT[m.event];
+  sys(m.roomId, fn ? fn(m) : m.event);
+  if (m.event === 'mute_all_on' || m.event === 'mute_all_off' || m.event === 'settings_changed') {
+    send({ type: 'group_info', room: m.roomId });
+  }
+  refreshMembers();
+  renderHeader();
+  render();
+}
+
+function sysAny(roomId, text) { if (rooms.has(roomId)) sys(roomId, text); else toast(text); }
 
 function scheduleAck() {
   if (ackTimer) return;
@@ -200,7 +466,7 @@ function scheduleAck() {
 }
 
 function refreshMembers() { if (currentRoom) send({ type: 'members', roomId: currentRoom }); }
-setInterval(refreshMembers, 5000);
+setInterval(() => { if (currentRoom) refreshMembers(); }, 5000);
 
 // 未 ACK 的消息每秒重发一次（clientMsgId 不变，服务端幂等）
 retryTimer = setInterval(() => {
@@ -219,14 +485,57 @@ function sys(roomId, text) {
   r.msgs.push({ sys: text }); render();
 }
 
+// ---------------------------------------------------------------- 渲染
+
 function renderRooms() {
-  $('roomList').innerHTML = [...rooms].map(([id, r]) =>
-    `<div class="room ${id === currentRoom ? 'active' : ''}" data-id="${id}">
-       <span>${escapeHtml(r.name || id)}</span>
-       <span class="badge">${r.role === 'admin' ? '管理员' : ''}</span>
-     </div>`).join('');
+  $('roomList').innerHTML = [...rooms].map(([id, r]) => {
+    const badge = r.role === 'owner'
+      ? '<span class="badge owner">群主</span>'
+      : r.role === 'admin' ? '<span class="badge admin">管理员</span>' : '';
+    const mode = r.group ? MODE_LABEL[r.group.joinMode] || '' : '';
+    return `<div class="room ${id === currentRoom ? 'active' : ''}" data-id="${id}">
+      <div class="line1"><span>${escapeHtml(r.name || id)}</span>${badge}</div>
+      <div class="mode">${mode}</div>
+    </div>`;
+  }).join('');
   for (const el of $('roomList').children) {
-    el.onclick = () => { currentRoom = el.dataset.id; renderRooms(); render(); refreshMembers(); };
+    el.onclick = () => {
+      currentRoom = el.dataset.id; pendingReqCount = 0;
+      renderRooms(); renderHeader(); renderAnnouncement(); render(); refreshMembers();
+      if (can(currentRoom, 'request.review')) send({ type: 'requests', roomId: currentRoom });
+    };
+  }
+}
+
+function renderHeader() {
+  const r = rooms.get(currentRoom);
+  $('roomHeader').classList.toggle('hidden', !r);
+  if (!r) return;
+  $('rhName').textContent = r.name;
+  $('rhMode').textContent = r.group ? MODE_LABEL[r.group.joinMode] : '';
+  $('rhCount').textContent = r.group ? `上限 ${r.group.maxMembers} 人 · 保留 ${r.group.retentionDays > 0 ? r.group.retentionDays + ' 天' : '永久'}` : '';
+
+  const show = (id, ok) => $(id).classList.toggle('hidden', !ok);
+  show('announceBtn', can(currentRoom, 'group.announce'));
+  show('muteAllBtn', can(currentRoom, 'member.mute'));
+  show('inviteBtn', can(currentRoom, 'member.invite'));
+  show('requestsBtn', can(currentRoom, 'request.review'));
+  show('settingsBtn', r.role === 'owner' || can(currentRoom, 'group.edit'));
+  $('leaveBtn').textContent = r.role === 'owner' ? '解散群组' : '退群';
+  $('leaveBtn').className = r.role === 'owner' ? 'danger' : 'ghost';
+  $('muteAllBtn').textContent = (r.group && r.group.muteAllUntil > Date.now()) ? '解除全员禁言' : '全员禁言';
+  $('reqCount').textContent = pendingReqCount > 0 ? ` (${pendingReqCount})` : '';
+}
+
+function renderAnnouncement() {
+  const r = rooms.get(currentRoom);
+  const bar = $('announceBar');
+  if (r && r.group && r.group.announcement) {
+    bar.style.display = 'block';
+    bar.textContent = `📢 ${r.group.announcement}`;
+  } else {
+    bar.style.display = 'none';
+    bar.textContent = '';
   }
 }
 
@@ -234,7 +543,7 @@ function render() {
   const r = rooms.get(currentRoom);
   $('composer').classList.toggle('hidden', !r);
   $('members').classList.toggle('hidden', !r);
-  if (!r) return;
+  if (!r) { $('messages').innerHTML = ''; return; }
   const box = $('messages');
   box.innerHTML = r.msgs.map((m) => {
     if (m.sys) return `<div class="sys">${escapeHtml(m.sys)}</div>`;
@@ -245,47 +554,362 @@ function render() {
   }).join('');
   box.scrollTop = box.scrollHeight;
   const muted = r.mutedUntil > Date.now();
-  $('msgInput').placeholder = muted ? `你已被禁言至 ${new Date(r.mutedUntil).toLocaleTimeString()}` : '发送消息…';
-  $('msgInput').disabled = muted;
+  $('msgInput').placeholder = muted
+    ? `你已被禁言至 ${new Date(r.mutedUntil).toLocaleTimeString()}`
+    : (r.group && r.group.muteAllUntil > Date.now() && ROLE_RANK[r.role] < ROLE_RANK.admin)
+      ? '全员禁言中…' : '发送消息…';
+  $('msgInput').disabled = muted || (r.group && r.group.muteAllUntil > Date.now() && ROLE_RANK[r.role] < ROLE_RANK.admin);
 }
 
-// 把 members 响应接进渲染
+let latestMembers = [];
+function renderMembersLatest() { if (currentRoom && latestMembers.length) renderMembers(latestMembers); }
+
 function renderMembers(list) {
+  latestMembers = list;
   const r = rooms.get(currentRoom); if (!r) return;
+  const myRank = ROLE_RANK[r.role];
   $('members').innerHTML = '<b>成员</b>' + list.map((m) => {
     const muted = m.mutedUntil > Date.now();
-    const adminBtns = r.role === 'admin' && m.userId !== me.userId && m.role !== 'admin'
-      ? (muted ? `<button data-act="unmute" data-uid="${m.userId}">解禁</button>`
-               : `<button data-act="mute" data-uid="${m.userId}">禁言</button>`) : '';
+    const rank = ROLE_RANK[m.role] || 1;
+    const acts = [];
+    if (m.userId !== me.userId) {
+      if (can(currentRoom, 'member.mute') && rank < myRank) {
+        acts.push(muted
+          ? `<button data-act="unmute" data-uid="${m.userId}" class="ghost">解禁</button>`
+          : `<button data-act="mute" data-uid="${m.userId}" class="ghost">禁言</button>`);
+      }
+      if (can(currentRoom, 'member.promote') && rank < myRank && m.role !== 'owner') {
+        acts.push(m.role === 'admin'
+          ? `<button data-act="demote" data-uid="${m.userId}" class="ghost">取消管理</button>`
+          : `<button data-act="promote" data-uid="${m.userId}" class="ghost">设管理</button>`);
+      }
+      if (can(currentRoom, 'member.kick') && rank < myRank && m.role !== 'owner') {
+        acts.push(`<button data-act="kick" data-uid="${m.userId}" class="danger">移出</button>`);
+      }
+      if (r.role === 'owner') {
+        acts.push(`<button data-act="transfer" data-uid="${m.userId}" class="ghost">转让群主</button>`);
+      }
+    }
+    const roleTag = m.role === 'owner' ? '<span class="tag owner">群主</span>'
+      : m.role === 'admin' ? '<span class="tag">管理员</span>' : '';
     return `<div class="m"><span class="dot ${m.online ? 'on' : ''}"></span>
-      ${escapeHtml(m.name)}
-      ${m.role === 'admin' ? '<span class="tag">管理员</span>' : ''}
+      ${escapeHtml(m.name)}${roleTag}
       ${muted ? '<span class="tag muted">禁言中</span>' : ''}
-      ${adminBtns}</div>`;
+      <span class="acts">${acts.join('')}</span></div>`;
   }).join('');
   $('members').querySelectorAll('button').forEach((b) => {
-    b.onclick = () => {
-      if (b.dataset.act === 'mute') {
-        const mins = prompt('禁言时长（分钟）', '10');
-        if (mins) send({ type: 'mute', roomId: currentRoom, userId: b.dataset.uid, minutes: Number(mins) });
-      } else {
-        send({ type: 'unmute', roomId: currentRoom, userId: b.dataset.uid });
-      }
-    };
+    b.onclick = () => memberAction(b.dataset.act, b.dataset.uid, list);
   });
+}
+
+function memberAction(act, uid, list) {
+  const target = list.find((x) => x.userId === uid);
+  if (act === 'mute') {
+    const mins = prompt(`禁言 ${target?.name || uid} 的时长（分钟，1..1440）`, '10');
+    if (mins) send({ type: 'mute', roomId: currentRoom, userId: uid, minutes: Number(mins) });
+  } else if (act === 'unmute') {
+    send({ type: 'unmute', roomId: currentRoom, userId: uid });
+  } else if (act === 'promote') {
+    if (confirm(`将 ${target?.name || uid} 设为管理员？`)) send({ type: 'set_admin', roomId: currentRoom, userId: uid, isAdmin: true });
+  } else if (act === 'demote') {
+    if (confirm(`取消 ${target?.name || uid} 的管理员身份？`)) send({ type: 'set_admin', roomId: currentRoom, userId: uid, isAdmin: false });
+  } else if (act === 'kick') {
+    if (confirm(`将 ${target?.name || uid} 移出群组？`)) send({ type: 'kick', roomId: currentRoom, userId: uid });
+  } else if (act === 'transfer') {
+    if (confirm(`确认把群主转让给 ${target?.name || uid}？转让后你将成为管理员。`)) {
+      send({ type: 'transfer_owner', roomId: currentRoom, userId: uid });
+    }
+  }
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// ---------------------------------------------------------------- 事件绑定
+// ---------------------------------------------------------------- 弹窗
+
+function openModal(html) {
+  $('modalBox').innerHTML = html;
+  $('modalRoot').classList.remove('hidden');
+}
+function closeModal() {
+  requestsModalOpen = false;
+  $('modalRoot').classList.add('hidden');
+  $('modalBox').innerHTML = '';
+}
+$('modalRoot').onclick = (e) => { if (e.target === $('modalRoot')) closeModal(); };
+
+function modalShell(title, body, actions) {
+  return `<h3>${escapeHtml(title)}</h3>${body}
+    <div class="modal-actions">${actions}</div>`;
+}
+
+// —— 创建群组 ——
+$('createBtn').onclick = () => {
+  openModal(modalShell('创建群组', `
+    <label>群组名称</label><input id="f_name" maxlength="64" placeholder="给群组起个名字">
+    <label>简介（可选）</label><textarea id="f_desc" rows="2" maxlength="500"></textarea>
+    <label>准入模式</label>
+    <select id="f_mode">
+      <option value="open">公开 —— 任何人可直接加入</option>
+      <option value="apply">申请加入 —— 管理员审批后入群</option>
+      <option value="private">私有 —— 仅凭邀请加入</option>
+    </select>
+    <label>最大人数</label><input id="f_max" type="number" min="2" value="200">
+    <label>消息保留天数（0 = 永久保留）</label><input id="f_ret" type="number" min="0" value="0">
+  `, '<button class="ghost" onclick="closeModal()">取消</button><button id="f_ok">创建</button>'));
+  $('f_ok').onclick = () => {
+    const name = $('f_name').value.trim();
+    if (!name) return toast('请填写群组名称', true);
+    send({
+      type: 'create_room', name,
+      description: $('f_desc').value.trim(),
+      joinMode: $('f_mode').value,
+      maxMembers: Number($('f_max').value),
+      retentionDays: Number($('f_ret').value),
+    });
+    closeModal();
+  };
+};
+
+// —— 发现群组 ——
+$('discoverBtn').onclick = () => {
+  openModal(modalShell('发现群组', `
+    <div style="display:flex;gap:8px">
+      <input id="d_kw" placeholder="按群名搜索" maxlength="64" style="flex:1">
+      <button id="d_search" class="ghost">搜索</button>
+      <button id="d_all">全部</button>
+    </div>
+    <div id="d_list" style="margin-top:10px"><span class="mode">加载中…</span></div>
+  `, '<button class="ghost" onclick="closeModal()">关闭</button>'));
+  $('d_search').onclick = () => send({ type: 'discover', keyword: $('d_kw').value.trim() });
+  $('d_all').onclick = () => { $('d_kw').value = ''; send({ type: 'discover' }); };
+  send({ type: 'discover' });
+};
+
+function renderDiscoverResults(groups) {
+  const box = $('d_list');
+  if (!box) return;
+  if (!groups.length) { box.innerHTML = '<span class="mode">没有可加入的群组</span>'; return; }
+  box.innerHTML = groups.map((g) => `
+    <div class="row-item">
+      <div class="grow"><div>${escapeHtml(g.name)}
+        <span class="mode">（${MODE_LABEL[g.joinMode]} · ${g.memberCount}/${g.maxMembers} 人）</span></div>
+        <div class="sub">${escapeHtml(g.description || '暂无简介')}</div></div>
+      <button data-gid="${g.id}" data-mode="${g.joinMode}" data-name="${escapeHtml(g.name)}">
+        ${g.joinMode === 'open' ? '加入' : '申请加入'}</button>
+    </div>`).join('');
+  box.querySelectorAll('button').forEach((b) => {
+    b.onclick = () => {
+      if (b.dataset.mode === 'apply') {
+        const message = prompt(`申请加入「${b.dataset.name}」的留言（可选）`) ?? '';
+        send({ type: 'join', room: b.dataset.gid, message });
+      } else {
+        send({ type: 'join', room: b.dataset.gid, lastSeq: 0 });
+      }
+      closeModal();
+    };
+  });
+}
+
+// —— 群设置 ——
+$('settingsBtn').onclick = () => {
+  const r = rooms.get(currentRoom); if (!r || !r.group) return;
+  const g = r.group;
+  const editable = r.role === 'owner' || can(currentRoom, 'group.edit');
+  const ov = g.rolePermissions || {};
+  const cell = (role, key, disabled) => {
+    const checked = ov[role] && ov[role][key] === true ? 'checked'
+      : ov[role] && ov[role][key] === false ? ''
+      : defaultPerm(role, key) ? 'checked' : '';
+    return `<td><input type="checkbox" data-role="${role}" data-key="${key}" ${checked} ${disabled}></td>`;
+  };
+  const rows = MATRIX_PERMS.map((k) => `<tr>
+    <td>${PERM_TITLES[k]}<br><span class="mode">${k}</span></td>
+    ${cell('admin', k, editable ? '' : 'disabled')}
+    ${cell('member', k, editable ? '' : 'disabled')}
+  </tr>`).join('');
+  openModal(modalShell(`群设置 · ${g.name}`, `
+    <label>群组名称</label><input id="s_name" maxlength="64" value="${escapeHtml(g.name)}" ${editable ? '' : 'disabled'}>
+    <label>简介</label><textarea id="s_desc" rows="2" maxlength="500" ${editable ? '' : 'disabled'}>${escapeHtml(g.description || '')}</textarea>
+    <label>准入模式</label>
+    <select id="s_mode" ${editable ? '' : 'disabled'}>
+      <option value="open" ${g.joinMode === 'open' ? 'selected' : ''}>公开</option>
+      <option value="apply" ${g.joinMode === 'apply' ? 'selected' : ''}>申请加入</option>
+      <option value="private" ${g.joinMode === 'private' ? 'selected' : ''}>私有</option>
+    </select>
+    <label>最大人数</label><input id="s_max" type="number" min="2" value="${g.maxMembers}" ${editable ? '' : 'disabled'}>
+    <label>消息保留天数（0 = 永久）</label><input id="s_ret" type="number" min="0" value="${g.retentionDays}" ${editable ? '' : 'disabled'}>
+    <label>角色权限矩阵（勾选 = 允许；群主权限恒定全开）</label>
+    <table class="perm-grid">
+      <tr><th>权限</th><th>管理员</th><th>普通成员</th></tr>${rows}
+    </table>
+    ${r.role === 'owner' ? `<label style="margin-top:14px">危险操作</label>
+      <button id="s_disband" class="danger" style="width:100%">解散群组</button>` : ''}
+  `, '<button class="ghost" onclick="closeModal()">取消</button>'
+     + (editable ? '<button id="s_ok">保存设置</button>' : '')));
+
+  if (editable) {
+    $('s_ok').onclick = () => {
+      const permissions = { admin: {}, member: {} };
+      document.querySelectorAll('.perm-grid input[type=checkbox]').forEach((cb) => {
+        const def = defaultPerm(cb.dataset.role, cb.dataset.key);
+        if (cb.checked !== def) permissions[cb.dataset.role][cb.dataset.key] = cb.checked;
+      });
+      send({ type: 'edit_group', roomId: currentRoom, name: $('s_name').value.trim(), description: $('s_desc').value.trim() });
+      send({
+        type: 'group_settings', roomId: currentRoom,
+        joinMode: $('s_mode').value,
+        maxMembers: Number($('s_max').value),
+        retentionDays: Number($('s_ret').value),
+      });
+      send({ type: 'set_permissions', roomId: currentRoom, permissions });
+      closeModal();
+      toast('设置已保存');
+    };
+  }
+  const dis = $('s_disband');
+  if (dis) dis.onclick = () => {
+    if (confirm('解散后群组的全部成员与消息将被删除，且不可恢复。确认解散？')) {
+      send({ type: 'disband', roomId: currentRoom });
+      closeModal();
+    }
+  };
+};
+
+function defaultPerm(role, key) {
+  const admin = { 'msg.send':1,'group.announce':1,'member.invite':1,'request.review':1,'member.mute':1,'member.kick':1 };
+  const member = { 'msg.send':1 };
+  return !!(role === 'admin' ? admin[key] : member[key]);
+}
+
+// —— 公告 ——
+$('announceBtn').onclick = () => {
+  const r = rooms.get(currentRoom);
+  const cur = r.group?.announcement || '';
+  openModal(modalShell('发布群组公告', `
+    <textarea id="a_text" rows="6" maxlength="2000" placeholder="公告内容（清空后保存即删除公告）">${escapeHtml(cur)}</textarea>
+  `, '<button class="ghost" onclick="closeModal()">取消</button><button id="a_ok">发布</button>'));
+  $('a_ok').onclick = () => {
+    send({ type: 'announcement', roomId: currentRoom, content: $('a_text').value.trim() });
+    closeModal();
+  };
+};
+
+// —— 全员禁言 ——
+$('muteAllBtn').onclick = () => {
+  const r = rooms.get(currentRoom);
+  const on = r.group && r.group.muteAllUntil > Date.now();
+  if (on) { send({ type: 'mute_all', roomId: currentRoom, minutes: 0 }); return; }
+  const mins = prompt('全员禁言时长（分钟，1..1440）', '30');
+  if (mins) send({ type: 'mute_all', roomId: currentRoom, minutes: Number(mins) });
+};
+
+// —— 邀请他人 ——
+$('inviteBtn').onclick = () => {
+  openModal(modalShell('邀请成员加入', `
+    <label>对方昵称</label><input id="iv_user" maxlength="32" placeholder="输入已注册用户的昵称">
+    <label>有效期（分钟，默认 7 天）</label><input id="iv_ttl" type="number" value="10080">
+    <label>邀请留言（可选）</label><textarea id="iv_msg" rows="2" maxlength="200"></textarea>
+  `, '<button class="ghost" onclick="closeModal()">取消</button><button id="iv_ok">发送邀请</button>'));
+  $('iv_ok').onclick = () => {
+    const user = $('iv_user').value.trim();
+    if (!user) return toast('请填写昵称', true);
+    send({
+      type: 'invite', roomId: currentRoom, user,
+      ttlMinutes: Number($('iv_ttl').value), message: $('iv_msg').value.trim(),
+    });
+    closeModal();
+  };
+};
+
+// —— 我的邀请收件箱 ——
+$('inviteInboxBtn').onclick = () => {
+  send({ type: 'invitations' });
+  renderInbox();
+};
+
+function renderInviteCount() {
+  $('inviteInboxBtn').classList.toggle('hidden', invites.length === 0);
+  const c = $('invCount');
+  c.textContent = invites.length;
+  c.classList.toggle('hidden', invites.length === 0);
+}
+
+function renderInbox() {
+  const body = invites.length ? invites.map((i) => {
+    const expired = i.expiresAt < Date.now();
+    return `<div class="row-item">
+      <div class="grow"><div>${escapeHtml(i.roomName)}</div>
+        <div class="sub">邀请人：${escapeHtml(i.inviterName)} · 有效期至 ${new Date(i.expiresAt).toLocaleString()}
+        ${i.message ? ' · 留言：' + escapeHtml(i.message) : ''}</div></div>
+      ${expired
+        ? '<span class="mode">已过期</span>'
+        : `<button data-act="accept" data-id="${i.id}">接受</button>
+           <button class="ghost" data-act="decline" data-id="${i.id}">拒绝</button>`}
+    </div>`;
+  }).join('') : '<span class="mode">暂无待处理邀请</span>';
+  openModal(modalShell('我的群邀请', body, '<button class="ghost" onclick="closeModal()">关闭</button>'));
+  document.querySelectorAll('#modalBox button[data-act]').forEach((b) => {
+    b.onclick = () => {
+      if (b.dataset.act === 'accept') {
+        send({ type: 'accept_invite', invitationId: b.dataset.id, lastSeq: 0 });
+        closeModal();
+      } else {
+        send({ type: 'decline_invite', invitationId: b.dataset.id });
+      }
+    };
+  });
+}
+
+// —— 入群申请审批 ——
+$('requestsBtn').onclick = () => {
+  requestsModalOpen = true;
+  send({ type: 'requests', roomId: currentRoom });
+};
+
+function renderRequests(m) {
+  const body = m.requests.length ? m.requests.map((q) => `
+    <div class="row-item">
+      <div class="grow"><div>${escapeHtml(q.userName || q.userId)}</div>
+        <div class="sub">${q.message ? escapeHtml(q.message) + ' · ' : ''}${new Date(q.createdAt).toLocaleString()}</div></div>
+      <button data-act="approve" data-id="${q.id}">通过</button>
+      <button class="danger" data-act="reject" data-id="${q.id}">拒绝</button>
+    </div>`).join('') : '<span class="mode">暂无待审批申请</span>';
+  openModal(modalShell(`入群申请 · ${rooms.get(m.roomId)?.name || ''}`, body,
+    '<button class="ghost" onclick="closeModal()">关闭</button>'));
+  document.querySelectorAll('#modalBox button[data-act]').forEach((b) => {
+    b.onclick = () => {
+      send({ type: b.dataset.act === 'approve' ? 'approve_request' : 'reject_request', requestId: b.dataset.id });
+      // 审批后刷新弹窗列表与计数
+      setTimeout(() => send({ type: 'requests', roomId: m.roomId }), 100);
+    };
+  });
+}
+
+// —— 退群 / 解散 ——
+$('leaveBtn').onclick = () => {
+  const r = rooms.get(currentRoom); if (!r) return;
+  if (r.role === 'owner') {
+    toast('群主请先在「群设置」中转让群主，或直接解散群组', true);
+    return;
+  }
+  if (confirm(`确认退出「${r.name}」？`)) {
+    send({ type: 'leave', roomId: currentRoom });
+    removeRoomLocal(currentRoom);
+  }
+};
+
+// ---------------------------------------------------------------- 登录与发消息
 
 $('loginForm').onsubmit = async (e) => {
   e.preventDefault();
   const name = $('nameInput').value.trim(); if (!name) return;
-  me = await login(name);
-  // 恢复房间进度
+  try {
+    me = await login(name);
+  } catch (err) {
+    return toast('登录失败，请重试', true);
+  }
   const saved = store.load();
   for (const [id, info] of Object.entries(saved)) {
     rooms.set(id, { name: info.name, msgs: [], pending: new Map(), lastSeenSeq: info.lastSeenSeq || 0 });
@@ -294,18 +918,6 @@ $('loginForm').onsubmit = async (e) => {
   $('roomPanel').classList.remove('hidden');
   $('who').textContent = `${me.name} (${me.userId})`;
   connect();
-};
-
-$('createForm').onsubmit = (e) => {
-  e.preventDefault();
-  const name = $('roomInput').value.trim(); if (!name) return;
-  send({ type: 'create_room', name });
-  $('roomInput').value = '';
-};
-
-$('joinBtn').onclick = () => {
-  const name = prompt('输入要加入的房间名');
-  if (name) send({ type: 'join', room: name, lastSeq: 0 });
 };
 
 $('composer').onsubmit = (e) => {

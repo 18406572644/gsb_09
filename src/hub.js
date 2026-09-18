@@ -169,6 +169,62 @@ class Hub {
     return delivered;
   }
 
+  /** 投递到某用户的全部在线连接（邀请、申请审批结果等定向通知） */
+  sendToUser(userId, frame) {
+    const set = this.byUser.get(userId);
+    if (!set) return 0;
+    let delivered = 0;
+    for (const conn of set) {
+      if (this.send(conn, frame)) delivered++;
+    }
+    return delivered;
+  }
+
+  /** 某用户的全部在线连接快照（申请批准后自动入群等） */
+  userConns(userId) {
+    const set = this.byUser.get(userId);
+    return set ? [...set] : [];
+  }
+
+  /**
+   * 强制将某用户的全部连接移出房间订阅（被踢/退群/解散后，断线重连也无法再收到广播）。
+   * 先发控制帧再退订；返回该用户在该房间的在线连接数。
+   */
+  forceLeaveRoom(roomId, userId, frame) {
+    const set = this.byUser.get(userId);
+    if (!set) return 0;
+    let n = 0;
+    for (const conn of [...set]) {
+      if (conn.rooms.has(roomId)) {
+        if (frame) this.send(conn, frame);
+        this.leaveRoom(conn, roomId);
+        n++;
+      }
+    }
+    return n;
+  }
+
+  /**
+   * 房间关闭（群组解散）：向所有订阅连接广播最后一帧，然后清空该房间的全部订阅。
+   * 由连接自身的 close 清理兜底；此处主动退订可立即释放 byRoom 索引。
+   */
+  closeRoom(roomId, frame) {
+    const set = this.byRoom.get(roomId);
+    if (!set) return 0;
+    const conns = [...set];
+    if (frame) for (const conn of conns) this.send(conn, frame);
+    for (const conn of conns) {
+      conn.rooms.delete(roomId);
+      const room = conn.unacked.get(roomId);
+      if (room) {
+        conn.unackedCount -= room.size;
+        conn.unacked.delete(roomId);
+      }
+    }
+    this.byRoom.delete(roomId);
+    return conns.length;
+  }
+
   /** 心跳扫描：超时未 pong 的连接直接 terminate（触发 close 走正常清理） */
   heartbeatSweep() {
     const t = now();

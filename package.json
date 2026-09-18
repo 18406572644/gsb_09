@@ -1,7 +1,7 @@
 {
   "name": "reliable-chat",
   "version": "1.0.0",
-  "description": "WebSocket 可靠消息投递聊天室：连接管理、消息持久化、ACK 确认、断线补发、幂等去重、房间权限（Node + ws + SQLite）",
+  "description": "群组聊天平台：WebSocket 可靠消息投递、群组准入（公开/申请/私有）、邀请与审批、角色权限矩阵、禁言策略、消息保留期限、群主转让与解散（Node + ws + SQLite）",
   "type": "commonjs",
   "main": "src/server.js",
   "scripts": {
